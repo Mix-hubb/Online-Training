@@ -1,0 +1,73 @@
+// Express app wiring. Order matters:
+//  1. trust proxy (Railway), CORS with credentials, cookie-parser
+//  2. Stripe + crypto webhooks with express.raw()  <-- MUST be before express.json()
+//  3. express.json()
+//  4. public + user routes, /instructor (requireInstructor + assignment), /admin (requireAuth + requireAdmin)
+//  5. 404 + error handler (stable error codes)
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+
+import { errorHandler, notFound } from './middleware/error-handler.js';
+import { stripeWebhookRouter } from './modules/payments/webhook.routes.js';
+import { authRouter } from './modules/auth/auth.routes.js';
+import { catalogRouter } from './modules/catalog/catalog.routes.js';
+import { landingRouter } from './modules/landing/landing.routes.js';
+import { learningRouter } from './modules/learning/learning.routes.js';
+import { quizRouter } from './modules/quiz/quiz.routes.js';
+import { checkoutRouter } from './modules/payments/checkout.routes.js';
+import { certificatesRouter } from './modules/certificates/certificates.routes.js';
+import { notificationsRouter } from './modules/notifications/notifications.routes.js';
+import { adminRouter } from './modules/admin/index.js';
+import { cryptoWebhookRouter } from './modules/payments/crypto-webhook.routes.js';
+import { bankTransferRouter } from './modules/payments/bank-transfer.routes.js';
+import { pinsRouter } from './modules/pins/pins.routes.js';
+import { chatRouter } from './modules/chat/chat.routes.js';
+import { instructorRouter } from './modules/instructor/index.js';
+import { partnerRouter } from './modules/partner/partner.routes.js';
+import { filesRouter } from './modules/files/files.routes.js';
+import { config } from './config.js';
+
+export function createApp() {
+  const app = express();
+
+  app.set('trust proxy', 1);
+  app.use(cors({ origin: config.WEB_URL, credentials: true }));
+  app.use(cookieParser());
+
+  // Raw body for Stripe signature verification.
+  app.use('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+  app.use('/crypto/webhook', express.raw({ type: '*/*' }), cryptoWebhookRouter);
+
+  // Dev video provider: accept and discard the upload body (Bunny uses TUS on its own host).
+  if (!config.bunnyStreamEnabled) {
+    app.put('/dev/video-upload/:id', (req, res) => {
+      req.resume();
+      req.on('end', () => res.status(204).end());
+    });
+  }
+
+  app.use(express.json({ limit: '25mb' })); // chat: 3 images x 5 MB as base64
+
+  app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  app.use(filesRouter);          // /files/public/*, /files/private/* (signed; local storage only)
+  app.use('/auth', authRouter);
+  app.use(catalogRouter);        // /courses, /categories, /tags
+  app.use(landingRouter);        // /landing
+  app.use(learningRouter);       // /courses/:id/enroll, /me/courses, /me/continue, /lessons/...
+  app.use(quizRouter);           // /courses/:id/quiz/start, /attempts/...
+  app.use(checkoutRouter);       // /courses/:id/checkout, /orders...
+  app.use(certificatesRouter);   // /certificates/:number, /me/certificates/:id/pdf
+  app.use(notificationsRouter);  // /notifications
+  app.use(bankTransferRouter);   // /payments/bank-details, /courses/:id/checkout/bank-transfer, /orders/:id/slip
+  app.use(pinsRouter);           // /me/pins
+  app.use(chatRouter);           // /me/threads, /threads/..., /attachments/:id/url
+  app.use('/instructor', instructorRouter);
+  app.use(partnerRouter);          // /partner/* (requireAuth + requirePartner)
+  app.use('/admin', adminRouter);
+
+  app.use(notFound);
+  app.use(errorHandler);
+  return app;
+}

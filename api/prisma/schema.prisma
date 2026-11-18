@@ -1,0 +1,597 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────── Enums ─────────
+enum Role {
+  USER
+  INSTRUCTOR
+  PARTNER // co-investor account created by an admin; sees only its own revenue sharing
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+enum TokenType {
+  VERIFY
+  RESET
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED // hidden from home + not purchasable; existing owners keep access
+}
+
+enum Level {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum EnrollmentStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum QuestionType {
+  MCQ
+  ESSAY
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  PENDING_REVIEW // has essay answers waiting for admin
+  GRADED
+}
+
+enum PayProvider {
+  STRIPE
+  BANK_TRANSFER
+  CRYPTO
+}
+
+enum SlipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ThreadType {
+  SUPPORT
+  COURSE
+}
+
+enum ThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum EntryStatus {
+  UNPAID
+  PAID
+}
+
+enum OrderStatus {
+  PENDING
+  AWAITING_SLIP
+  PAID
+  REFUNDED
+  FAILED
+}
+
+// ───────── Users & auth ─────────
+model User {
+  id                 String     @id @default(cuid())
+  email              String     @unique
+  name               String
+  avatarUrl          String?
+  passwordHash       String? // null when Google-only
+  googleId           String?    @unique
+  role               Role       @default(USER)
+  status             UserStatus @default(ACTIVE)
+  emailVerifiedAt    DateTime?
+  mustChangePassword Boolean    @default(false) // true for admin-created accounts until first password change
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  tokens        AuthToken[]
+  enrollments   Enrollment[]
+  orders        Order[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  teaches     CourseInstructor[]
+  pins        UserPin[]
+  threads     SupportThread[]
+  messages    ThreadMessage[]
+  partnerLink Partner?
+}
+
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  type      TokenType
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+// ───────── Catalog ─────────
+model Category {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  slug    String   @unique
+  courses Course[]
+}
+
+model Tag {
+  id      String      @id @default(cuid())
+  name    String      @unique
+  slug    String      @unique
+  courses CourseTag[]
+}
+
+model Course {
+  id            String       @id @default(cuid())
+  slug          String       @unique
+  title         String
+  summary       String
+  description   String
+  outcomes      String[] // "what you will learn"
+  thumbnailUrl  String?
+  introVideoId  String? // Bunny video guid for the preview video
+  level         Level        @default(BEGINNER)
+  status        CourseStatus @default(DRAFT)
+  isFree        Boolean      @default(true)
+  priceMinor    Int          @default(0) // USD cents
+  currency      String       @default("usd")
+  priceThbMinor Int? // THB satang; needed for PromptPay and bank transfer
+  allow4k       Boolean      @default(false) // spec 15.5: 4K renditions only when on (open decision 10.7)
+  stripePriceId String?
+  categoryId    String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  publishedAt   DateTime?
+
+  category    Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags        CourseTag[]
+  lessons     Lesson[]
+  quiz        Quiz?
+  enrollments Enrollment[]
+  orders      Order[]
+  instructors CourseInstructor[]
+  pins        UserPin[]
+  shares      CourseRevenueShare[]
+  threads     SupportThread[]
+
+  @@index([status])
+}
+
+model CourseTag {
+  courseId String
+  tagId    String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, tagId])
+}
+
+model Lesson {
+  id             String      @id @default(cuid())
+  courseId       String
+  order          Int
+  title          String
+  description    String?
+  bunnyVideoId   String? // Bunny Stream video guid
+  videoStatus    VideoStatus @default(PROCESSING)
+  durationSec    Int         @default(0)
+  sourceHeight   Int? // source resolution in px (e.g. 2160); never upscale
+  attachmentUrls String[]
+
+  course     Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress   LessonProgress[]
+  renditions LessonRendition[]
+
+  @@unique([courseId, order])
+}
+
+// ───────── Learning ─────────
+model Enrollment {
+  id           String           @id @default(cuid())
+  userId       String
+  courseId     String
+  status       EnrollmentStatus @default(IN_PROGRESS)
+  cycle        Int              @default(1) // +1 each time user fails all attempts and must restart
+  lastLessonId String?
+  enrolledAt   DateTime         @default(now())
+  completedAt  DateTime?
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+  attempts QuizAttempt[]
+  cert     Certificate?
+
+  @@unique([userId, courseId])
+}
+
+model LessonProgress {
+  id              String   @id @default(cuid())
+  enrollmentId    String
+  lessonId        String
+  cycle           Int      @default(1)
+  watchedSec      Int      @default(0) // furthest accumulated watch time
+  lastPositionSec Int      @default(0) // resume point
+  completed       Boolean  @default(false) // true when watchedSec >= 90% duration
+  updatedAt       DateTime @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId, cycle])
+}
+
+// ───────── Quiz ─────────
+model Quiz {
+  id           String @id @default(cuid())
+  courseId     String @unique
+  passPercent  Int    @default(70)
+  timeLimitMin Int? // null = no limit
+  maxAttempts  Int    @default(3)
+
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  QuizAttempt[]
+}
+
+model Question {
+  id     String       @id @default(cuid())
+  quizId String
+  order  Int
+  type   QuestionType
+  text   String
+  points Int          @default(1)
+
+  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options Option[]
+  answers AttemptAnswer[]
+}
+
+model Option {
+  id         String  @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean @default(false)
+
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  AttemptAnswer[]
+}
+
+model QuizAttempt {
+  id           String        @id @default(cuid())
+  enrollmentId String
+  quizId       String
+  cycle        Int           @default(1)
+  status       AttemptStatus @default(IN_PROGRESS)
+  startedAt    DateTime      @default(now())
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  score        Int? // points earned
+  maxScore     Int?
+  passed       Boolean?
+
+  enrollment Enrollment      @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  quiz       Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers    AttemptAnswer[]
+  cert       Certificate?
+
+  @@index([enrollmentId, cycle])
+}
+
+model AttemptAnswer {
+  id            String  @id @default(cuid())
+  attemptId     String
+  questionId    String
+  optionId      String? // MCQ
+  essayText     String? // ESSAY
+  pointsAwarded Int?
+  adminComment  String?
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  option   Option?     @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+}
+
+// ───────── Certificates ─────────
+model Certificate {
+  id           String   @id @default(cuid())
+  number       String   @unique // public verify code
+  enrollmentId String   @unique
+  attemptId    String   @unique
+  issuedAt     DateTime @default(now())
+  pdfUrl       String?
+
+  enrollment Enrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+}
+
+// Singleton row (id = 1). Fixed layout, editable fields only.
+model CertificateTemplate {
+  id           Int     @id @default(1)
+  heading      String  @default("Certificate of Completion")
+  issuerName   String  @default("")
+  signerName   String  @default("")
+  signerTitle  String  @default("")
+  logoUrl      String?
+  signatureUrl String?
+  primaryColor String  @default("#1a73e8")
+}
+
+// ───────── Payments ─────────
+model Order {
+  id                    String      @id @default(cuid())
+  userId                String
+  courseId              String
+  status                OrderStatus @default(PENDING)
+  amountMinor           Int
+  currency              String
+  provider              PayProvider @default(STRIPE)
+  method                String? // card | promptpay | bank | btc
+  providerRef           String?     @unique // crypto invoice id, etc.
+  expiresAt             DateTime?
+  stripeSessionId       String?     @unique
+  stripePaymentIntentId String?
+  receiptUrl            String?
+  createdAt             DateTime    @default(now())
+  paidAt                DateTime?
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course  Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  slips   PaymentSlip[]
+  revenue RevenueEntry[]
+
+  @@index([userId])
+}
+
+// ───────── Misc ─────────
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  text      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model Banner {
+  id       String  @id @default(cuid())
+  imageUrl String
+  linkUrl  String?
+  altText  String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+}
+
+model LandingSection {
+  id        String  @id @default(cuid())
+  key       String  @unique // e.g. "hero", "footer", "company"
+  content   Json
+  order     Int     @default(0)
+  isVisible Boolean @default(true)
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  actorId  String?
+  action   String // e.g. "course.update"
+  entity   String
+  entityId String?
+  diff     Json?
+  at       DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([at])
+}
+
+// ===== Added: instructors, pins, video renditions =====
+
+model CourseInstructor {
+  courseId   String
+  userId     String
+  assignedAt DateTime @default(now())
+  assignedBy String? // admin user id
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, userId])
+  @@index([userId])
+}
+
+model UserPin {
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseId])
+}
+
+model LessonRendition {
+  lessonId String
+  height   Int // 720 | 1080 | 2160
+  ready    Boolean @default(false)
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, height])
+}
+
+// ===== Added: partners and revenue ledger (no automatic payout) =====
+
+// A partner gets a revenue share: a co-investor (logo shown on the site) or an instructor.
+// userId links the login account: role PARTNER (created by an admin) or the instructor's own account.
+model Partner {
+  id         String   @id @default(cuid())
+  name       String
+  contact    String?
+  userId     String?  @unique // login account: PARTNER (admin-created) or INSTRUCTOR; null until created
+  logoUrl    String? // public image via FileStorage
+  websiteUrl String?
+  showLogo   Boolean  @default(false) // show in the home page / footer partner strip
+  logoOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  user    User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shares  CourseRevenueShare[]
+  entries RevenueEntry[]
+  payouts PartnerPayout[]
+}
+
+model CourseRevenueShare {
+  courseId  String
+  partnerId String
+  percentBp Int // basis points, 2500 = 25%. Sum per course must be <= 10000 (enforce in code)
+
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@id([courseId, partnerId])
+}
+
+model RevenueEntry {
+  id          String      @id @default(cuid())
+  partnerId   String
+  orderId     String
+  courseId    String
+  currency    String
+  baseMinor   Int // order amount used for the split
+  percentBp   Int // snapshot at the time of the order
+  amountMinor Int // negative for refund reversals
+  reversesId  String?     @unique // set on a reversal entry
+  status      EntryStatus @default(UNPAID)
+  payoutId    String?
+  createdAt   DateTime    @default(now())
+
+  partner Partner        @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payout  PartnerPayout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId, status])
+  @@index([orderId])
+}
+
+model PartnerPayout {
+  id         String    @id @default(cuid())
+  partnerId  String
+  currency   String
+  totalMinor Int
+  periodFrom DateTime?
+  periodTo   DateTime?
+  paidAt     DateTime
+  reference  String?
+  note       String?
+  createdBy  String? // admin user id
+  createdAt  DateTime  @default(now())
+
+  partner Partner        @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  entries RevenueEntry[]
+}
+
+// ===== Added: bank transfer slips =====
+
+model PaymentSlip {
+  id         String     @id @default(cuid())
+  orderId    String
+  storageKey String // private path, served by signed URL only
+  mime       String
+  sizeBytes  Int
+  status     SlipStatus @default(PENDING)
+  reason     String? // rejection reason
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// ===== Added: private support chat and course questions =====
+
+model SupportThread {
+  id            String       @id @default(cuid())
+  type          ThreadType
+  userId        String
+  courseId      String? // required when type = COURSE
+  subject       String
+  status        ThreadStatus @default(OPEN)
+  lastMessageAt DateTime     @default(now())
+  userReadAt    DateTime?
+  staffReadAt   DateTime? // shared "staff has seen" marker; per-staff unread can come later
+  createdAt     DateTime     @default(now())
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  messages ThreadMessage[]
+
+  @@index([userId])
+  @@index([courseId, status])
+  @@index([type, status, lastMessageAt])
+}
+
+model ThreadMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  senderId  String
+  body      String // max 2000 chars, validate in code
+  createdAt DateTime @default(now())
+
+  thread      SupportThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender      User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments MessageAttachment[]
+
+  @@index([threadId, createdAt])
+}
+
+model MessageAttachment {
+  id         String @id @default(cuid())
+  messageId  String
+  storageKey String // private path, served by signed URL only
+  mime       String
+  sizeBytes  Int
+  width      Int?
+  height     Int?
+
+  message ThreadMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500">
+  <!-- Mockup banner: mine entrance with rails and a cart. Main subject sits in the middle third so it survives cropping. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EAF2FB"/>
+      <stop offset="1" stop-color="#CFE0F2"/>
+    </linearGradient>
+    <linearGradient id="hill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7FB0DE"/>
+      <stop offset="1" stop-color="#5E93C8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.6" r="0.6">
+      <stop offset="0" stop-color="#F6C453" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#F6C453" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="500" fill="url(#sky)"/>
+  <circle cx="1030" cy="110" r="56" fill="#FFFFFF" opacity="0.75"/>
+  <g fill="#FFFFFF" opacity="0.8">
+    <ellipse cx="560" cy="90" rx="70" ry="18"/><ellipse cx="610" cy="78" rx="44" ry="20"/>
+    <ellipse cx="1180" cy="150" rx="60" ry="14"/><ellipse cx="1215" cy="140" rx="36" ry="16"/>
+  </g>
+  <path d="M0 330 L220 220 L380 300 L520 200 L700 320 L900 230 L1080 300 L1260 210 L1440 290 L1600 240 L1600 500 L0 500 Z" fill="#B5D2EE"/>
+  <path d="M380 440 L560 250 Q620 190 700 175 L820 150 Q880 145 930 175 L1040 245 L1230 440 Z" fill="url(#hill)"/>
+  <rect x="0" y="430" width="1600" height="70" fill="#4F86BE"/>
+  <rect x="0" y="430" width="1600" height="6" fill="#3F78B2"/>
+  <!-- entrance -->
+  <path d="M720 432 L720 320 Q720 270 800 262 Q880 270 880 320 L880 432 Z" fill="#14213D"/>
+  <path d="M735 432 L735 325 Q735 285 800 278 Q865 285 865 325 L865 432 Z" fill="url(#glow)"/>
+  <g fill="#8A5A2B">
+    <rect x="708" y="300" width="18" height="134"/>
+    <rect x="874" y="300" width="18" height="134"/>
+    <rect x="696" y="286" width="208" height="20" rx="2"/>
+  </g>
+  <rect x="770" y="250" width="60" height="22" rx="3" fill="#FFFFFF"/>
+  <text x="800" y="266" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="13" fill="#17599A">MINE 01</text>
+  <!-- lamp -->
+  <line x1="800" y1="306" x2="800" y2="326" stroke="#3A4B5F" stroke-width="2"/>
+  <circle cx="800" cy="332" r="7" fill="#F6C453"/>
+  <!-- rails -->
+  <g stroke="#3A4B5F" stroke-width="5" stroke-linecap="round">
+    <line x1="780" y1="432" x2="700" y2="500"/>
+    <line x1="820" y1="432" x2="900" y2="500"/>
+  </g>
+  <g stroke="#8A5A2B" stroke-width="6" stroke-linecap="round">
+    <line x1="772" y1="442" x2="828" y2="442"/>
+    <line x1="756" y1="458" x2="844" y2="458"/>
+    <line x1="738" y1="476" x2="862" y2="476"/>
+    <line x1="718" y1="494" x2="882" y2="494"/>
+  </g>
+  <!-- cart -->
+  <g>
+    <path d="M930 372 L1040 372 L1028 420 L942 420 Z" fill="#1F6FB8"/>
+    <rect x="924" y="364" width="122" height="12" rx="2" fill="#17599A"/>
+    <path d="M944 364 Q960 336 985 346 Q1000 330 1022 350 L1030 364 Z" fill="#5B6B7F"/>
+    <circle cx="958" cy="424" r="11" fill="#14213D"/><circle cx="958" cy="424" r="4" fill="#B5C2D1"/>
+    <circle cx="1012" cy="424" r="11" fill="#14213D"/><circle cx="1012" cy="424" r="4" fill="#B5C2D1"/>
+  </g>
+  <!-- helmet on the ground -->
+  <g transform="translate(600 404)">
+    <path d="M0 26 Q0 0 30 0 Q60 0 60 26 Z" fill="#F2B705"/>
+    <rect x="-8" y="24" width="76" height="8" rx="4" fill="#D99A00"/>
+    <rect x="26" y="2" width="8" height="22" rx="3" fill="#D99A00"/>
+  </g>
+  <!-- pine trees -->
+  <g fill="#3F78B2">
+    <path d="M470 432 L492 372 L514 432 Z"/><path d="M500 432 L520 384 L540 432 Z"/>
+    <path d="M1100 432 L1124 366 L1148 432 Z"/><path d="M1136 432 L1154 388 L1172 432 Z"/>
+  </g>
+</svg>
