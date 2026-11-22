@@ -5,7 +5,7 @@ import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '@/stores/auth';
 import { initials } from '@/utils/format';
 
-withDefaults(defineProps<{ bell?: boolean; viewSiteLabel?: string; name?: string }>(), { bell: true });
+withDefaults(defineProps<{ bell?: boolean; viewSiteLabel?: string; name?: string }>(), { bell: true, viewSiteLabel: undefined, name: undefined });
 defineEmits<{ menu: [] }>();
 const { mdAndUp } = useDisplay();
 const auth = useAuthStore();

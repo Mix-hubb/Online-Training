@@ -56,7 +56,7 @@ const roleLabel: Record<string, string> = { USER: 'Learner', INSTRUCTOR: 'Instru
         <label for="u-r" class="sr-only">Role</label>
         <select id="u-r" v-model="q.role" class="ot-select">
           <option value="">All roles</option>
-          <option v-for="(t, v) in roleLabel" :key="v" :value="v">{{ t }}</option>
+          <option v-for="(label, v) in roleLabel" :key="v" :value="v">{{ label }}</option>
         </select>
       </div>
       <div class="grow1">
