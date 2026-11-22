@@ -160,7 +160,7 @@ async function remove(id: string) {
   width: 36px;
   height: 36px;
   flex: none;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-accent-tint);
   color: var(--ot-accent-strong);
   display: flex;

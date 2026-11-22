@@ -49,7 +49,7 @@ const auth = useAuthStore();
 .who-mark {
   width: 32px;
   height: 32px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-accent-tint);
   color: var(--ot-accent);
   display: flex;

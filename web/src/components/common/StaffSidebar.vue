@@ -88,7 +88,7 @@ async function logout() {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  color: #4a5b70;
+  color: var(--ot-text-2);
 }
 .side-item:hover {
   background: var(--ot-deep);
@@ -103,9 +103,9 @@ async function logout() {
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-accent);
-  color: #fff;
+  color: var(--ot-surface);
   display: inline-flex;
   align-items: center;
   justify-content: center;

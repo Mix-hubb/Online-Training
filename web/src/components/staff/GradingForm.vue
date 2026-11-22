@@ -123,7 +123,7 @@ function save() {
 }
 .answer {
   padding: 14px 16px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-bg);
   border: 1px solid var(--ot-border);
   font-size: 14px;

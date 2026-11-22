@@ -98,8 +98,8 @@ function openEditor(q: AdminQuestion | null) {
           <div class="d-flex flex-wrap align-center justify-space-between ga-2">
             <span class="text-caption font-weight-bold text-muted">Question {{ i + 1 }} · {{ q.type === 'MCQ' ? 'Multiple choice' : 'Written answer' }} · {{ q.points }} {{ q.points === 1 ? 'point' : 'points' }}</span>
             <span class="d-flex align-center ga-1">
-              <button type="button" class="row-link" :disabled="i === 0" :aria-label="`Move question ${i + 1} up`" @click="move(i, -1)">↑</button>
-              <button type="button" class="row-link" :disabled="i === qs.length - 1" :aria-label="`Move question ${i + 1} down`" @click="move(i, 1)">↓</button>
+              <button type="button" class="row-link move" :disabled="i === 0" :aria-label="`Move question ${i + 1} up`" @click="move(i, -1)">↑</button>
+              <button type="button" class="row-link move" :disabled="i === qs.length - 1" :aria-label="`Move question ${i + 1} down`" @click="move(i, 1)">↓</button>
               <button type="button" class="row-link" @click="openEditor(q)">Edit</button>
               <button type="button" class="row-link danger" @click="del = q">Remove</button>
             </span>
@@ -153,7 +153,7 @@ function openEditor(q: AdminQuestion | null) {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--ot-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   font-size: 14px;
 }
 .opt.right {
@@ -164,5 +164,9 @@ function openEditor(q: AdminQuestion | null) {
 .row-link:disabled {
   opacity: 0.35;
   cursor: default;
+}
+.move {
+  min-width: var(--ot-control-h);
+  justify-content: center;
 }
 </style>

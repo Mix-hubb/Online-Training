@@ -34,7 +34,7 @@ async function logout() {
   <v-app-bar flat color="background" border="b" height="72">
     <v-container class="d-flex align-center py-0" style="max-width: var(--ot-page-max); padding-inline: var(--ot-gutter)">
       <v-app-bar-nav-icon v-if="!mdAndUp" aria-label="Open menu" @click="drawer = !drawer" />
-      <router-link to="/" class="d-flex align-center text-decoration-none mr-6" aria-label="Online Training home">
+      <router-link to="/" class="d-flex align-center text-decoration-none mr-6 brand-link" aria-label="Online Training home">
         <BrandMark class="mr-2" />
         <span class="brand-name d-none d-sm-inline">Online Training</span>
       </router-link>
@@ -94,15 +94,30 @@ async function logout() {
   font-weight: 600;
   font-size: 17px;
 }
+.brand-link {
+  min-height: var(--ot-control-h);
+  min-width: var(--ot-control-h);
+  justify-content: center;
+  border-radius: var(--ot-radius-control);
+}
 .main-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ot-control-h);
+  padding: 0 var(--ot-space-0-5);
+  border-bottom: 2px solid transparent;
   color: var(--ot-muted);
   text-decoration: none;
-  font-size: 14px;
+  font-size: var(--ot-fs-base);
   font-weight: 500;
+  transition: color var(--ot-transition), border-color var(--ot-transition);
 }
-.main-nav a.active,
 .main-nav a:hover {
   color: var(--ot-text);
+}
+.main-nav a.active {
+  color: var(--ot-text);
+  border-bottom-color: var(--ot-accent);
 }
 .account-chip {
   display: flex;

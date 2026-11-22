@@ -80,14 +80,14 @@ function key(e: KeyboardEvent) {
   color: var(--ot-text-2);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-deep);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   padding: 4px 8px 4px 4px;
 }
 .file img {
   width: 28px;
   height: 28px;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
 }
 .rm {
   border: 0;
@@ -101,7 +101,7 @@ function key(e: KeyboardEvent) {
   flex: none;
   width: 46px;
   height: 46px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);
@@ -119,7 +119,7 @@ function key(e: KeyboardEvent) {
   flex: 1;
   resize: none;
   padding: 12px 14px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);

@@ -101,14 +101,20 @@ function set<K extends keyof CourseQuery>(k: K, v: CourseQuery[K]) {
   height: 46px;
 }
 .topic {
-  font-size: 13px;
-  padding: 7px 14px;
-  border-radius: 4px;
+  font-size: var(--ot-fs-sm);
+  padding: 0 var(--ot-space-2);
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
-  background: transparent;
+  background: var(--ot-surface);
   color: var(--ot-muted);
   cursor: pointer;
-  min-height: 34px;
+  min-height: var(--ot-control-h);
+  transition: background var(--ot-transition), border-color var(--ot-transition), color var(--ot-transition);
+}
+.topic:hover {
+  border-color: var(--ot-info-border);
+  background: var(--ot-accent-hover);
+  color: var(--ot-text);
 }
 .topic.on {
   border-color: var(--ot-info-border);

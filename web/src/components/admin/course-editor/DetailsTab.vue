@@ -188,7 +188,7 @@ async function save() {
   gap: 10px;
   padding: 4px 12px;
   border: 1px solid var(--ot-input-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-surface);
 }
 .outcome:focus-within {
@@ -197,7 +197,7 @@ async function save() {
 .bare {
   flex: 1;
   min-width: 0;
-  height: 36px;
+  height: var(--ot-control-h);
   border: 0;
   outline: none;
   background: transparent;
@@ -207,26 +207,33 @@ async function save() {
 }
 .add-link {
   align-self: flex-start;
-  padding: 6px 0;
+  min-height: var(--ot-control-h);
+  padding: 0 var(--ot-space-1-5);
+  margin-left: calc(-1 * var(--ot-space-1-5));
   border: 0;
+  border-radius: var(--ot-radius-control);
   background: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--ot-fs-sm);
   font-weight: 500;
   color: var(--ot-accent-strong);
+  transition: background var(--ot-transition);
+}
+.add-link:hover {
+  background: var(--ot-accent-hover);
 }
 .seg {
   display: flex;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-bg);
   border: 1px solid var(--ot-border);
 }
 .seg button {
   flex: 1;
-  height: 38px;
+  height: var(--ot-control-h);
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: transparent;
   cursor: pointer;
   font-size: 13px;

@@ -1,42 +1,87 @@
-/* Global styles from the client's light-theme mockup. Tokens mirror plugins/vuetify.ts.
-   Ground #F4F7FB, white cards with a 1px border and a light shadow, 6px cards, 4px controls, 3px labels. */
+/* Design tokens: the ONE place for colors, type, spacing, radius and shadows. Vuetify colors mirror these in
+   plugins/vuetify.ts. White/light-grey ground, muted-blue accent, thin borders and light shadows, 8px spacing grid.
+   Every text color here has contrast >= 4.5:1 on white and on --ot-bg. */
 :root {
-  --ot-radius-card: 6px;
-  --ot-radius-control: 4px;
-  --ot-radius-pill: 3px;
-  --ot-border: #d9e2ec;
-  --ot-input-border: #c3d0de;
-  --ot-text: #14213d;
-  --ot-text-2: #3a4b5f;
-  --ot-muted: #5b6b7f;
-  --ot-faint: #7a8798;
+  /* Color: ground and surfaces */
   --ot-bg: #f4f7fb;
   --ot-surface: #ffffff;
   --ot-raised: #f8fafd;
   --ot-deep: #f1f5fa;
   --ot-thumb: #dce8f5;
+  /* Video stage only: dark letterbox behind the player, as in any video player */
+  --ot-video-bg: #0f1a26;
+  --ot-video-text: #dcebfa;
+  --ot-border: #d9e2ec;
+  --ot-input-border: #c3d0de;
+  /* Color: text */
+  --ot-text: #14213d;
+  --ot-text-2: #3a4b5f;
+  --ot-muted: #5b6b7f;
+  --ot-faint: #617086;
+  /* Color: accent (brand muted blue) */
   --ot-accent: #1f6fb8;
-  /* Page width: wide enough to fill large screens, with side gutters that grow with the screen. */
-  --ot-page-max: 1600px;
-  --ot-gutter: clamp(16px, 3vw, 48px);
   --ot-accent-strong: #17599a;
   --ot-accent-tint: #e6f0fa;
   --ot-accent-tint-text: #17599a;
+  --ot-accent-hover: #eef4fb;
+  /* Color: status */
   --ot-info-bg: #edf4fb;
   --ot-info-border: #b5d2ee;
-  --ot-success: #1e8a66;
+  --ot-success: #187556;
   --ot-success-bg: #e8f6f0;
   --ot-success-border: #a8d9c6;
-  --ot-warning: #9a6409;
+  --ot-warning: #8a5a08;
   --ot-warning-bg: #fbf3e2;
   --ot-warning-border: #e6cc96;
   --ot-danger: #c0392b;
   --ot-danger-bg: #fcebe9;
   --ot-danger-border: #efb7b0;
+
+  /* Type */
+  --ot-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ot-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ot-fs-xs: 12px;
+  --ot-fs-sm: 13px;
+  --ot-fs-base: 14px;
+  --ot-fs-md: 16px;
+  --ot-fs-lg: 20px;
+  --ot-fs-xl: 24px;
+  --ot-fs-2xl: 28px;
+  --ot-fs-3xl: 36px;
+  --ot-lh-tight: 1.25;
+  --ot-lh-body: 1.6;
+
+  /* Spacing: 8px grid (4px half-step for tight UI) */
+  --ot-space-0-5: 4px;
+  --ot-space-1: 8px;
+  --ot-space-1-5: 12px;
+  --ot-space-2: 16px;
+  --ot-space-3: 24px;
+  --ot-space-4: 32px;
+  --ot-space-5: 40px;
+  --ot-space-6: 48px;
+  --ot-space-8: 64px;
+
+  /* Shape: moderate corners */
+  --ot-radius-card: 8px;
+  --ot-radius-control: 6px;
+  --ot-radius-pill: 4px;
+
+  /* Elevation: thin, light shadows */
   --ot-shadow-card: 0 1px 3px rgba(20, 33, 61, 0.08);
+  --ot-shadow-hover: 0 4px 12px rgba(20, 33, 61, 0.1);
   --ot-shadow-btn: 0 1px 2px rgba(20, 33, 61, 0.08);
   --ot-shadow-btn-primary: 0 1px 2px rgba(20, 33, 61, 0.22);
   --ot-shadow-pop: 0 8px 24px rgba(20, 33, 61, 0.14);
+
+  /* Controls: every clickable target is at least 44px */
+  --ot-control-h: 44px;
+  --ot-focus-ring: 0 0 0 3px rgba(31, 111, 184, 0.35);
+  --ot-transition: 120ms ease;
+
+  /* Layout: wide enough to fill large screens, side gutters grow with the screen */
+  --ot-page-max: 1600px;
+  --ot-gutter: clamp(16px, 3vw, 48px);
 }
 
 html,
@@ -47,7 +92,8 @@ body {
 
 body,
 .v-application {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--ot-font);
+  line-height: var(--ot-lh-body);
 }
 
 :focus-visible {
@@ -80,6 +126,18 @@ a {
   border-radius: var(--ot-radius-card);
   box-shadow: var(--ot-shadow-card);
 }
+/* A panel that is itself a link or button lifts a little on hover */
+a.panel,
+button.panel,
+.panel.is-link {
+  transition: box-shadow var(--ot-transition), border-color var(--ot-transition);
+}
+a.panel:hover,
+button.panel:hover,
+.panel.is-link:hover {
+  border-color: var(--ot-info-border);
+  box-shadow: var(--ot-shadow-hover);
+}
 .panel-head {
   display: flex;
   align-items: center;
@@ -91,7 +149,7 @@ a {
   font-weight: 600;
 }
 
-/* Buttons: 4px, no uppercase; filled and outlined get a light shadow */
+/* Buttons: no uppercase; filled and outlined get a light shadow. Every size keeps a 44px target. */
 .v-btn,
 .v-tab.v-btn {
   border-radius: var(--ot-radius-control) !important;
@@ -101,6 +159,34 @@ a {
 }
 .v-tab.v-btn {
   border-radius: 0 !important;
+}
+.v-btn--size-small:not(.v-btn--icon),
+.v-btn--size-x-small:not(.v-btn--icon) {
+  min-height: var(--ot-control-h);
+}
+.v-btn--icon.v-btn--size-small,
+.v-btn--icon.v-btn--size-x-small {
+  width: var(--ot-control-h) !important;
+  height: var(--ot-control-h) !important;
+}
+/* Pagination buttons: 44px targets. */
+.v-pagination .v-btn {
+  width: var(--ot-control-h) !important;
+  height: var(--ot-control-h) !important;
+}
+/* Switches, checkboxes and radios: the whole row (control + label) is the target, at least 44px tall. */
+.v-selection-control {
+  min-height: var(--ot-control-h);
+}
+.v-btn:focus-visible {
+  outline: 2px solid var(--ot-accent);
+  outline-offset: 2px;
+}
+.v-btn--disabled {
+  opacity: 0.6;
+}
+.v-btn--variant-outlined:hover {
+  border-color: var(--ot-info-border) !important;
 }
 .v-btn--variant-elevated,
 .v-btn--variant-flat {
@@ -279,21 +365,22 @@ a {
   max-width: 760px;
 }
 .page-title {
-  font-size: 26px;
+  font-size: var(--ot-fs-2xl);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.25;
-  margin-bottom: 4px;
+  line-height: var(--ot-lh-tight);
+  margin-bottom: var(--ot-space-0-5);
 }
 .page-sub {
-  font-size: 14px;
+  font-size: var(--ot-fs-base);
   color: var(--ot-muted);
-  margin: 6px 0 0;
+  margin: var(--ot-space-1) 0 0;
 }
 .section-title {
-  font-size: 20px;
+  font-size: var(--ot-fs-lg);
   font-weight: 600;
-  margin: 32px 0 16px;
+  line-height: var(--ot-lh-tight);
+  margin: var(--ot-space-4) 0 var(--ot-space-2);
 }
 /* Kept for markup compatibility; same font as the body. */
 .serif {
@@ -351,12 +438,18 @@ table.data-table td {
 table.data-table td {
   padding: 18px 20px;
 }
+table.data-table tbody tr {
+  transition: background var(--ot-transition);
+}
+table.data-table tbody tr:hover {
+  background: var(--ot-raised);
+}
 table.data-table th.text-right,
 table.data-table td.text-right {
   text-align: right;
 }
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--ot-font-mono);
 }
 .sr-only {
   position: absolute;
@@ -471,22 +564,27 @@ table.data-table td.text-right {
 }
 .seg-tabs {
   display: flex;
-  padding: 4px;
-  border-radius: 5px;
+  padding: var(--ot-space-0-5);
+  border-radius: var(--ot-radius-card);
   background: var(--ot-surface);
   border: 1px solid var(--ot-border);
   box-shadow: var(--ot-shadow-card);
 }
 .seg-tabs button {
   flex: 1;
-  height: 44px;
+  height: var(--ot-control-h);
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--ot-fs-base);
   font-weight: 600;
   background: transparent;
   color: var(--ot-muted);
+  transition: background var(--ot-transition), color var(--ot-transition);
+}
+.seg-tabs button:hover {
+  color: var(--ot-text);
+  background: var(--ot-raised);
 }
 .seg-tabs button[aria-selected='true'] {
   background: var(--ot-accent-tint);
@@ -514,15 +612,25 @@ table.data-table td.text-right {
   gap: 6px;
 }
 .chipbar button {
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 4px;
+  min-height: var(--ot-control-h);
+  padding: 0 var(--ot-space-2);
+  border-radius: var(--ot-radius-control);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--ot-fs-sm);
   font-weight: 500;
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-muted);
+  transition: background var(--ot-transition), border-color var(--ot-transition), color var(--ot-transition);
+}
+.chipbar button:hover {
+  border-color: var(--ot-info-border);
+  color: var(--ot-text);
+  background: var(--ot-accent-hover);
+}
+.chipbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .chipbar button[aria-pressed='true'] {
   border-color: var(--ot-info-border);
@@ -535,13 +643,28 @@ table.data-table td.text-right {
 .ot-input,
 .ot-select {
   width: 100%;
-  height: 44px;
+  height: var(--ot-control-h);
   padding: 0 14px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);
-  font-size: 14px;
+  font-size: var(--ot-fs-base);
+  font-family: inherit;
+  transition: border-color var(--ot-transition);
+}
+.ot-input:hover,
+.ot-select:hover {
+  border-color: var(--ot-muted);
+}
+.ot-input:disabled,
+.ot-select:disabled {
+  background: var(--ot-raised);
+  color: var(--ot-faint);
+  cursor: not-allowed;
+}
+.ot-input::placeholder {
+  color: var(--ot-faint);
 }
 .ot-select {
   padding: 0 12px;
@@ -551,6 +674,7 @@ table.data-table td.text-right {
 .ot-select:focus {
   outline: 2px solid var(--ot-accent);
   outline-offset: -1px;
+  border-color: var(--ot-accent);
 }
 .filters {
   display: flex;
@@ -569,24 +693,37 @@ table.data-table td.text-right {
 .row-btn {
   display: inline-flex;
   align-items: center;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 4px;
+  min-height: var(--ot-control-h);
+  padding: 0 var(--ot-space-2);
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--ot-fs-sm);
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--ot-shadow-btn);
+  transition: background var(--ot-transition), border-color var(--ot-transition);
+}
+.row-btn:hover {
+  background: var(--ot-accent-hover);
+  border-color: var(--ot-info-border);
+}
+.row-btn:disabled,
+.row-btn[aria-disabled='true'] {
+  color: var(--ot-faint);
+  background: var(--ot-raised);
+  box-shadow: none;
+  cursor: not-allowed;
 }
 .row-link {
   display: inline-flex;
   align-items: center;
-  height: 40px;
-  padding: 0 12px;
+  min-height: var(--ot-control-h);
+  padding: 0 var(--ot-space-1-5);
   border: 0;
+  border-radius: var(--ot-radius-control);
   background: transparent;
   color: var(--ot-accent-strong);
   text-decoration: none;
@@ -594,8 +731,15 @@ table.data-table td.text-right {
   font-weight: 500;
   cursor: pointer;
 }
+.row-link:hover:not(:disabled) {
+  text-decoration: underline;
+  background: var(--ot-accent-hover);
+}
 .row-link.danger {
   color: var(--ot-danger);
+}
+.row-link.danger:hover:not(:disabled) {
+  background: var(--ot-danger-bg);
 }
 .row-link:disabled {
   color: var(--ot-faint);
@@ -634,6 +778,9 @@ table.data-table td.text-right {
   font-size: 14px;
   font-weight: 600;
   color: var(--ot-muted);
+}
+.ul-tabs button:hover {
+  color: var(--ot-text);
 }
 .ul-tabs button[aria-selected='true'] {
   border-bottom-color: var(--ot-accent);

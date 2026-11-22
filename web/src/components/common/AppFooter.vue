@@ -130,9 +130,9 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
 }
 .flogo {
   width: 120px;
-  height: 36px;
+  height: var(--ot-control-h);
   border: 1px solid var(--ot-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-surface);
   display: flex;
   align-items: center;

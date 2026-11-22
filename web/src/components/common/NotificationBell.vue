@@ -54,7 +54,7 @@ async function open(n: AppNotification) {
   height: 44px;
 }
 .square-badge :deep(.v-badge__badge) {
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   font-weight: 700;
 }
 .dot {

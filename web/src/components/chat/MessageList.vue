@@ -50,7 +50,7 @@ const roleLabel: Record<string, string> = { ADMIN: 'Support', INSTRUCTOR: 'Instr
   font-size: 12px;
   color: var(--ot-muted);
   border: 1px solid var(--ot-border);
-  border-radius: 5px;
+  border-radius: var(--ot-radius-card);
   padding: 4px 12px;
 }
 .msg {
@@ -68,7 +68,7 @@ const roleLabel: Record<string, string> = { ADMIN: 'Support', INSTRUCTOR: 'Instr
 }
 .bubble {
   max-width: 74%;
-  border-radius: 5px;
+  border-radius: var(--ot-radius-card);
   padding: 12px 14px;
   font-size: 14px;
   line-height: 1.55;

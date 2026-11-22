@@ -62,7 +62,7 @@ watch(
 .marq {
   position: relative;
   overflow: hidden;
-  height: 60px;
+  height: 68px;
   display: flex;
   align-items: center;
 }
@@ -91,8 +91,8 @@ watch(
 .logo {
   flex: none;
   width: 140px;
-  height: 36px;
-  border-radius: 4px;
+  height: var(--ot-control-h);
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-border);
   background: var(--ot-raised);
   display: flex;

@@ -64,7 +64,7 @@ defineProps<{ course: CourseCard; cta?: string }>();
   color: var(--ot-muted);
   background: rgba(255, 255, 255, 0.92);
   padding: 4px 10px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
 }
 .body {
   padding: 18px;

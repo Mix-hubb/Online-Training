@@ -54,7 +54,7 @@ const hasBtc = computed(() => props.options.some((o) => o.method === 'btc'));
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-border);
   background: var(--ot-surface);
 }
@@ -74,7 +74,7 @@ const hasBtc = computed(() => props.options.some((o) => o.method === 'btc'));
   width: 18px;
   height: 18px;
   border-radius: 9px;
-  border: 2px solid #4a586a;
+  border: 2px solid var(--ot-text-2);
   background: var(--ot-surface);
 }
 .method.on .dot {

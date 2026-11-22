@@ -1,5 +1,5 @@
-// Light theme from the client's mockup (white + blue). 6px cards, 4px controls, 3px labels, light shadows.
-// Tokens mirrored in styles/main.css.
+// Light theme (white + muted blue). Colors mirror the design tokens in styles/main.css (the source of truth).
+// Corners and shadows come from the main.css tokens: 8px cards, 6px controls, 4px labels.
 import 'vuetify/styles';
 import { createVuetify } from 'vuetify';
 
@@ -23,10 +23,11 @@ export const vuetify = createVuetify({
           'on-background': '#14213D',
           'on-surface': '#14213D',
           muted: '#5B6B7F',
+          faint: '#617086',
           border: '#D9E2EC',
           'input-border': '#C3D0DE',
-          success: '#1E8A66',
-          warning: '#9A6409',
+          success: '#187556',
+          warning: '#8A5A08',
           error: '#C0392B',
           info: '#1F6FB8',
         },
@@ -34,20 +35,20 @@ export const vuetify = createVuetify({
     },
   },
   defaults: {
-    global: { rounded: 'sm' },
-    VBtn: { rounded: 'sm', minHeight: 44, elevation: 0 },
-    VCard: { rounded: 'sm', elevation: 0 },
-    VTextField: { variant: 'outlined', rounded: 'sm' },
-    VSelect: { variant: 'outlined', rounded: 'sm' },
-    VTextarea: { variant: 'outlined', rounded: 'sm' },
-    VFileInput: { variant: 'outlined', rounded: 'sm' },
-    VAlert: { rounded: 'sm' },
-    VDialog: { rounded: 'sm' },
-    VMenu: { rounded: 'sm' },
+    global: { rounded: 'md' },
+    VBtn: { rounded: 'md', minHeight: 44, elevation: 0 },
+    VCard: { rounded: 'md', elevation: 0 },
+    VTextField: { variant: 'outlined', rounded: 'md' },
+    VSelect: { variant: 'outlined', rounded: 'md' },
+    VTextarea: { variant: 'outlined', rounded: 'md' },
+    VFileInput: { variant: 'outlined', rounded: 'md' },
+    VAlert: { rounded: 'md' },
+    VDialog: { rounded: 'md' },
+    VMenu: { rounded: 'md' },
     VListItem: { rounded: 0 },
-    VChip: { rounded: 'sm' },
+    VChip: { rounded: 'md' },
     VTab: { rounded: 0 },
-    VSnackbar: { color: 'on-surface', rounded: 'sm' },
+    VSnackbar: { color: 'on-surface', rounded: 'md' },
     VProgressLinear: { rounded: false },
   },
 });

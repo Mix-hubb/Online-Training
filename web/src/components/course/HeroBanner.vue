@@ -67,9 +67,9 @@ onBeforeUnmount(() => clearInterval(timer));
   align-items: stretch;
   min-height: 340px;
   border: 1px solid var(--ot-border);
-  border-radius: 6px;
+  border-radius: var(--ot-radius-card);
   overflow: hidden;
-  background: #eaf2fb;
+  background: var(--ot-accent-tint);
   box-shadow: var(--ot-shadow-card);
 }
 .text {
@@ -88,7 +88,7 @@ onBeforeUnmount(() => clearInterval(timer));
   text-transform: uppercase;
   color: var(--ot-accent);
   border: 1px solid var(--ot-info-border);
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   padding: 4px 10px;
 }
 h1 {
@@ -110,7 +110,7 @@ p {
   display: inline-flex;
   align-items: center;
   padding: 13px 22px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);
@@ -122,7 +122,7 @@ p {
 .btn.primary {
   border-color: var(--ot-accent);
   background: var(--ot-accent);
-  color: #fff;
+  color: var(--ot-surface);
   font-weight: 600;
   box-shadow: var(--ot-shadow-btn-primary);
 }
@@ -139,7 +139,7 @@ p {
   flex: 1 1 380px;
   min-height: 260px;
   position: relative;
-  background: repeating-linear-gradient(135deg, #e8eff7 0, #e8eff7 14px, #dfe8f2 14px, #dfe8f2 28px);
+  background: repeating-linear-gradient(135deg, var(--ot-deep) 0, var(--ot-deep) 14px, var(--ot-thumb) 14px, var(--ot-thumb) 28px);
 }
 .art img {
   position: absolute;
@@ -172,22 +172,36 @@ p {
 }
 .dots {
   position: absolute;
-  right: 24px;
-  bottom: 28px;
+  right: 12px;
+  bottom: 8px;
   display: flex;
-  gap: 8px;
 }
+/* The button is a 44px target; the visible dot is drawn by ::before. */
 .dots button {
-  width: 6px;
-  height: 6px;
+  position: relative;
+  width: var(--ot-control-h);
+  height: var(--ot-control-h);
   padding: 0;
   border: 0;
-  border-radius: 3px;
-  background: #b5c2d1;
+  background: transparent;
   cursor: pointer;
-  transition: width 0.2s;
 }
-.dots button.on {
+.dots button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--ot-radius-pill);
+  background: var(--ot-input-border);
+  transition: width 0.2s, background 0.2s;
+}
+.dots button:hover::before {
+  background: var(--ot-muted);
+}
+.dots button.on::before {
   width: 24px;
   background: var(--ot-accent);
 }
@@ -213,7 +227,7 @@ p {
 @media (prefers-reduced-motion: reduce) {
   .fade-enter-active,
   .fade-leave-active,
-  .dots button {
+  .dots button::before {
     transition: none;
   }
 }

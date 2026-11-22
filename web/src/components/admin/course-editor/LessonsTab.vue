@@ -143,26 +143,33 @@ const h = (x: number) => (x >= 2160 ? '4K' : `${x}p`);
 }
 .order {
   display: flex;
-  flex-direction: column;
+  flex: none;
 }
+/* Move up / down: side by side, each a 44px target. */
 .arrow {
-  width: 24px;
-  height: 18px;
+  width: var(--ot-control-h);
+  height: var(--ot-control-h);
   border: 0;
+  border-radius: var(--ot-radius-control);
   background: none;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ot-muted);
+  transition: background var(--ot-transition), color var(--ot-transition);
+}
+.arrow:hover:not(:disabled) {
+  background: var(--ot-accent-hover);
+  color: var(--ot-accent-strong);
 }
 .arrow:disabled {
-  opacity: 0.3;
-  cursor: default;
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .num {
   width: 30px;
   height: 30px;
   flex: none;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-accent-tint);
   color: var(--ot-accent-strong);
   display: flex;

@@ -67,7 +67,7 @@ const tone = (s: string) => (s === 'COMPLETED' ? 'success' : s === 'WAITING_FOR_
 .bar {
   flex: 1;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-border);
   overflow: hidden;
 }

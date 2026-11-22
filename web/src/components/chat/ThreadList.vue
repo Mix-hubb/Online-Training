@@ -84,7 +84,7 @@ defineEmits<{ select: [string] }>();
 .dot {
   width: 8px;
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-accent);
   margin-left: auto;
   flex: none;

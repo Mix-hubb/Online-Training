@@ -51,7 +51,7 @@ defineProps<{ lessons: CourseDetail['lessons']; enrolled: boolean; hasTest?: boo
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--ot-radius-card);
   background: var(--ot-deep);
   color: var(--ot-muted);
   display: flex;

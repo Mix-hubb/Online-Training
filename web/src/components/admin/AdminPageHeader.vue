@@ -17,13 +17,16 @@ defineProps<{ title: string; subtitle?: string; back?: string }>();
 
 <style scoped>
 .back-link {
-  display: inline-block;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ot-control-h);
+  font-size: var(--ot-fs-sm);
   color: var(--ot-muted);
   text-decoration: none;
-  margin-bottom: 8px;
+  transition: color var(--ot-transition);
 }
 .back-link:hover {
   color: var(--ot-text);
+  text-decoration: underline;
 }
 </style>
