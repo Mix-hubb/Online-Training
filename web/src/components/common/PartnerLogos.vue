@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Partner logo strip: logos straight on the page background (no panel behind them). Only partners with showLogo, ordered by logoOrder (API).
+// Partner logo strip: logos straight on the page background, no panel or tile. Grey until hovered or focused,
+// then the logo shows its real colors. Only partners with showLogo, ordered by logoOrder (API).
 // Scrolls slowly and without stopping, but only when the logos do not fit in the panel; if they fit, it stays still.
 // Speed is fixed in px per second, so it looks the same with few or many partners.
 // Client asked that it never stops: no pause on hover, and it keeps moving even with "reduce motion" on (slow speed).
@@ -62,7 +63,7 @@ watch(
 .marq {
   position: relative;
   overflow: hidden;
-  height: 52px;
+  height: 72px;
   display: flex;
   align-items: center;
 }
@@ -77,11 +78,12 @@ watch(
 }
 .group {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 48px;
 }
 /* While scrolling, keep the same gap between the end of one copy and the start of the next. */
 .moving .group {
-  padding-right: 16px;
+  padding-right: 48px;
 }
 @keyframes marquee {
   from {
@@ -93,22 +95,31 @@ watch(
 }
 .logo {
   flex: none;
-  width: 140px;
-  height: var(--ot-control-h);
-  border-radius: var(--ot-radius-control);
-  border: 1px solid var(--ot-border);
-  background: var(--ot-raised);
+  height: 56px;
+  min-width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  border-radius: var(--ot-radius-control);
+  font-size: var(--ot-fs-base);
+  font-weight: 600;
   color: var(--ot-faint);
   text-decoration: none;
-  overflow: hidden;
+  filter: grayscale(1);
+  opacity: 0.65;
+  transition: filter var(--ot-transition), opacity var(--ot-transition), color var(--ot-transition);
+}
+.logo:hover,
+.logo:focus-visible {
+  filter: none;
+  opacity: 1;
+  color: var(--ot-text);
 }
 .logo img {
-  max-width: 120px;
-  max-height: 28px;
+  display: block;
+  height: 56px;
+  width: auto;
+  max-width: 220px;
   object-fit: contain;
 }
 </style>
