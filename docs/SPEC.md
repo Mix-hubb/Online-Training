@@ -149,7 +149,7 @@ Dark theme, calm and professional (set up as a custom Vuetify dark theme):
 
 ## 11. Out of scope for v1 (do not build)
 
-Subscriptions, coupons, reviews and ratings, public Q&A under lessons (private course chat is in scope, see 15.4), wishlist, manual course grant, certificate revocation, changing roles other than assigning instructors to courses, email notifications (in-app only), multi-language UI, drag-and-drop certificate designer, DRM, automatic payouts to partners (payouts are recorded by hand, see 15.1).
+Subscriptions, coupons, ~~reviews and ratings~~ (now in scope, see 17), public Q&A under lessons (private course chat is in scope, see 15.4), wishlist, manual course grant, certificate revocation, changing roles other than assigning instructors to courses, email notifications (in-app only), multi-language UI, drag-and-drop certificate designer, DRM, automatic payouts to partners (payouts are recorded by hand, see 15.1).
 
 ## 12. Existing starter
 
@@ -268,3 +268,26 @@ Ledger percent snapshot, payout covers only unpaid entries, max 2 instructors, i
 - API: `GET /admin/courses/pins`, `POST|DELETE /admin/courses/:id/pin`, `PUT /admin/courses/pins { ids }`.
 - Every learner-facing course list (home catalog, search/filter results) sorts pinned courses first by `pinOrder`, then the normal order. No "pinned" label or field is sent to learners.
 - Tests: ordering, publish-only pinning, admin-only access.
+
+## 17. Client change request (2026-11-22, later) — course reviews (overrides section 11)
+
+### 17.1 Learners
+- A learner can rate (1 to 5 stars) and review a course once their enrollment for it is `COMPLETED`. One review per learner per course (`CourseReview`, unique on course + user). They can edit or delete it later, also after restarting the course. Otherwise the server answers `NOT_COMPLETED`.
+- Body: 1 to 2000 characters, trimmed. Partners cannot review.
+- The form is on the course page (`/courses/:slug#reviews`); the passed result page links to it ("Rate this course").
+- Privacy: the public list shows first name + last initial only ("Somchai J."), never the email.
+
+### 17.2 Course page
+- "Learner reviews" section: average (1 decimal), star breakdown 5..1, newest reviews first, 5 per page with "Show more". Header shows the average and count next to the course meta.
+- `GET /courses/:slug` returns `rating { average, count }` (VISIBLE reviews only).
+
+### 17.3 Admin moderation
+- `/admin/reviews` (sidebar "Reviews"): filter by course, status, stars, text / learner. Actions: **Hide** (optional reason, admin-only), **Show**, **Delete**.
+- Hidden: kept in the database, removed from the public list and the rating; the author still sees it, marked as hidden, and editing it does not make it public again. Moderation does not change `updatedAt` (the public "edited" mark is the learner's own edits).
+- Every action writes an audit row: `review.hide`, `review.show`, `review.delete`.
+
+### 17.4 API
+- Public: `GET /courses/:slug/reviews?page&pageSize` -> `{ summary { average, count, distribution }, items, total, page, pages }`.
+- Learner: `GET|PUT|DELETE /me/courses/:courseId/review` (`GET` -> `{ canReview, review }`).
+- Admin: `GET /admin/reviews?courseId&status&rating&q&page`, `PATCH /admin/reviews/:id { status, reason? }`, `DELETE /admin/reviews/:id`.
+- Tests (`api/tests/reviews.test.ts`): completed-only, one per course, validation, public summary and short names, hide/show/delete with audit, hidden stays hidden on edit, non-admin forbidden, own delete.

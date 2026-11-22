@@ -5,6 +5,7 @@ import { AppError } from '../../lib/errors.js';
 import { paged } from '../../lib/pagination.js';
 import type { CourseListQuery } from './catalog.schemas.js';
 import { availableMethods } from '../payments/checkout-methods.js';
+import { ratingSummary } from '../reviews/reviews.service.js';
 
 export const cardInclude = {
   category: { select: { id: true, name: true, slug: true } },
@@ -89,6 +90,7 @@ export async function courseDetail(slug: string, viewer?: User) {
   if (c.status === 'DRAFT' && !isStaff) throw new AppError('NOT_FOUND', 404);
   if (c.status === 'ARCHIVED' && !isStaff && !enrollment) throw new AppError('COURSE_UNAVAILABLE', 410);
 
+  const rating = await ratingSummary(c.id);
   const pending = viewer
     ? await prisma.order.findFirst({
         where: { userId: viewer.id, courseId: c.id, status: { in: ['PENDING', 'AWAITING_SLIP'] } },
@@ -112,6 +114,7 @@ export async function courseDetail(slug: string, viewer?: User) {
         }
       : null,
     paymentMethods: c.isFree ? [] : availableMethods(c),
+    rating: { average: rating.average, count: rating.count },
     viewer: viewer
       ? {
           enrolled: Boolean(enrollment),

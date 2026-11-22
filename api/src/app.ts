@@ -25,6 +25,7 @@ import { chatRouter } from './modules/chat/chat.routes.js';
 import { instructorRouter } from './modules/instructor/index.js';
 import { partnerRouter } from './modules/partner/partner.routes.js';
 import { filesRouter } from './modules/files/files.routes.js';
+import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { config } from './config.js';
 
 export function createApp() {
@@ -61,6 +62,7 @@ export function createApp() {
   app.use(notificationsRouter);  // /notifications
   app.use(bankTransferRouter);   // /payments/bank-details, /courses/:id/checkout/bank-transfer, /orders/:id/slip
   app.use(chatRouter);           // /me/threads, /threads/..., /attachments/:id/url
+  app.use(reviewsRouter);        // /courses/:slug/reviews, /me/courses/:courseId/review
   app.use('/instructor', instructorRouter);
   app.use(partnerRouter);          // /partner/* (requireAuth + requirePartner)
   app.use('/admin', adminRouter);

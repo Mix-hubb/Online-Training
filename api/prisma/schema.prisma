@@ -118,6 +118,7 @@ model User {
   threads     SupportThread[]
   messages    ThreadMessage[]
   partnerLink Partner?
+  reviews     CourseReview[]
 }
 
 model AuthToken {
@@ -180,6 +181,7 @@ model Course {
   orders      Order[]
   instructors CourseInstructor[]
   threads     SupportThread[]
+  reviews     CourseReview[]
 
   @@index([status])
 }
@@ -580,4 +582,28 @@ model MessageAttachment {
   height     Int?
 
   message ThreadMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+// Learner reviews (spec 17). One per learner per course, written after the course is COMPLETED.
+// Admin can hide a review (kept, not public) or delete it.
+enum ReviewStatus {
+  VISIBLE
+  HIDDEN
+}
+
+model CourseReview {
+  id           String       @id @default(cuid())
+  courseId     String
+  userId       String
+  rating       Int // 1..5
+  body         String
+  status       ReviewStatus @default(VISIBLE)
+  hiddenReason String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([courseId, status, createdAt])
 }

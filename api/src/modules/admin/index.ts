@@ -24,6 +24,7 @@ import { supportAdminRouter } from './support.routes.js';
 import { paymentReviewAdminRouter } from './payment-review.routes.js';
 import { settingsAdminRouter } from './settings.routes.js';
 import { partnersAdminRouter } from './partners.routes.js';
+import { reviewsAdminRouter } from './reviews.routes.js';
 import crypto from 'node:crypto';
 
 export const adminRouter = Router();
@@ -59,4 +60,5 @@ adminRouter.use(
   paymentReviewAdminRouter,
   settingsAdminRouter,
   partnersAdminRouter,
+  reviewsAdminRouter,
 );
