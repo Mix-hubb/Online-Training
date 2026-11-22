@@ -24,6 +24,34 @@
   --ot-accent-tint: #e6f0fa;
   --ot-accent-tint-text: #17599a;
   --ot-accent-hover: #eef4fb;
+  --ot-accent-grad: linear-gradient(135deg, #2a7cc7 0%, #17599a 100%);
+  /* Color: highlight (warm amber, like a highlighter on study notes). Fills and marks only;
+     text on it uses --ot-hl-text. Kept apart from --ot-warning, which is for status. */
+  --ot-hl: #f5b83d;
+  --ot-hl-tint: #fff4d6;
+  --ot-hl-mark: #ffe3a3;
+  --ot-hl-text: #7a4300;
+  /* Color: navy band (footer, closing call to action). Dark blue, not black. */
+  --ot-navy: #13243d;
+  --ot-navy-2: #1b3253;
+  --ot-on-navy: #e3ebf5;
+  --ot-on-navy-muted: #a8b8cc;
+  /* Color: course topics. A topic gets one pair by its name; text on the pair is >= 4.5:1. */
+  --ot-topic-1-bg: #e3eefa;
+  --ot-topic-1-fg: #17599a;
+  --ot-topic-2-bg: #dcf2ef;
+  --ot-topic-2-fg: #0b6b62;
+  --ot-topic-3-bg: #ece8fa;
+  --ot-topic-3-fg: #4f3f9e;
+  --ot-topic-4-bg: #fdf1d8;
+  --ot-topic-4-fg: #7a4300;
+  --ot-topic-5-bg: #fbe7ea;
+  --ot-topic-5-fg: #9b2c42;
+  --ot-topic-6-bg: #e3f3e8;
+  --ot-topic-6-fg: #1d6b3f;
+  /* Soft page washes for hero and section bands */
+  --ot-wash-hero: linear-gradient(120deg, #e3eefa 0%, #f2f7fd 55%, #fff4d6 100%);
+  --ot-wash-band: linear-gradient(180deg, #eef4fb 0%, #f4f7fb 100%);
   /* Color: status */
   --ot-info-bg: #edf4fb;
   --ot-info-border: #b5d2ee;
@@ -39,6 +67,7 @@
 
   /* Type */
   --ot-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ot-font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --ot-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --ot-fs-xs: 12px;
   --ot-fs-sm: 13px;
@@ -73,11 +102,13 @@
   --ot-shadow-btn: 0 1px 2px rgba(20, 33, 61, 0.08);
   --ot-shadow-btn-primary: 0 1px 2px rgba(20, 33, 61, 0.22);
   --ot-shadow-pop: 0 8px 24px rgba(20, 33, 61, 0.14);
+  --ot-shadow-lift: 0 10px 28px rgba(20, 33, 61, 0.12);
 
   /* Controls: every clickable target is at least 44px */
   --ot-control-h: 44px;
   --ot-focus-ring: 0 0 0 3px rgba(31, 111, 184, 0.35);
   --ot-transition: 120ms ease;
+  --ot-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Layout: wide enough to fill large screens, side gutters grow with the screen */
   --ot-page-max: 1600px;
@@ -103,6 +134,77 @@ body,
 
 a {
   color: var(--ot-accent-strong);
+}
+
+/* Headings and big numbers use the display font */
+h1,
+h2,
+h3,
+.page-title,
+.section-title,
+.stat-value,
+.display {
+  font-family: var(--ot-font-display);
+}
+
+/* Highlighter mark behind a word (the highlight color, as on study notes) */
+.hl-mark {
+  background: linear-gradient(transparent 58%, var(--ot-hl-mark) 58%, var(--ot-hl-mark) 92%, transparent 92%);
+  padding: 0 2px;
+}
+
+/* Small uppercase label above a section title */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ot-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ot-accent-strong);
+}
+.eyebrow::before {
+  content: '';
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ot-hl);
+}
+
+/* Icon in a tinted square */
+.icon-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ot-radius-card);
+  background: var(--ot-accent-tint);
+  color: var(--ot-accent-strong);
+}
+.icon-tile.hl {
+  background: var(--ot-hl-tint);
+  color: var(--ot-hl-text);
+}
+
+/* Fade-up on entering the screen (v-reveal). Off when the device asks for less motion. */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.45s var(--ot-ease-out), transform 0.45s var(--ot-ease-out);
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 /* Cards and framed blocks: white, 1px border, light shadow */
@@ -136,7 +238,7 @@ a.panel:hover,
 button.panel:hover,
 .panel.is-link:hover {
   border-color: var(--ot-info-border);
-  box-shadow: var(--ot-shadow-hover);
+  box-shadow: var(--ot-shadow-lift);
 }
 .panel-head {
   display: flex;
@@ -284,6 +386,11 @@ button.panel:hover,
   color: var(--ot-muted);
   white-space: nowrap;
 }
+.tag.hl {
+  background: var(--ot-hl-tint);
+  border-color: var(--ot-hl-mark);
+  color: var(--ot-hl-text);
+}
 .tag.accent {
   border-color: var(--ot-info-border);
   color: var(--ot-accent-strong);
@@ -315,14 +422,40 @@ button.panel:hover,
   background: var(--ot-danger-bg);
 }
 
-/* Stat tile */
+/* Stat tile: a colored bar on top; tiles in a row cycle through the topic colors */
 .stat {
+  --stat-c: var(--ot-accent);
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 20px;
+  padding: 22px 20px 20px;
   text-decoration: none;
   color: var(--ot-text);
+}
+.stat::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--stat-c);
+}
+.stat:nth-child(4n + 2) {
+  --stat-c: var(--ot-topic-2-fg);
+}
+.stat:nth-child(4n + 3) {
+  --stat-c: var(--ot-hl);
+}
+.stat:nth-child(4n + 4) {
+  --stat-c: var(--ot-topic-3-fg);
+}
+a.stat:hover {
+  box-shadow: var(--ot-shadow-hover);
+  transform: translateY(-1px);
+}
+a.stat {
+  transition: box-shadow var(--ot-transition), transform var(--ot-transition), border-color var(--ot-transition);
 }
 .stat-label {
   font-size: 13px;

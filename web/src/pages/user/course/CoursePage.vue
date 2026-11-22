@@ -14,6 +14,7 @@ import { ApiError, errorMessage } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
 import type { CourseDetail, Currency, PayMethod } from '@/types';
 import { duration, levelLabel, money, plural, priceLabel } from '@/utils/format';
+import CourseCover from '@/components/course/CourseCover.vue';
 
 const props = defineProps<{ slug?: string; preview?: boolean }>();
 const route = useRoute();
@@ -117,7 +118,7 @@ async function playIntro() {
         </header>
 
         <div class="media">
-          <img v-if="course.thumbnailUrl" :src="course.thumbnailUrl" alt="" />
+          <CourseCover class="cover-fill" :image-url="course.thumbnailUrl" :topic="course.category?.name" :title="course.title" size="lg" label />
           <button v-if="course.hasIntroVideo" type="button" class="play" aria-label="Play course introduction" @click="playIntro">
             <v-icon icon="mdi-play" size="32" />
           </button>
@@ -288,12 +289,9 @@ h2 {
   align-items: center;
   justify-content: center;
 }
-.media img {
+.cover-fill {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 .play {
   position: relative;

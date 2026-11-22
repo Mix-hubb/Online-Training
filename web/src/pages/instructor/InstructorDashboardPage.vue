@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import StatusPill from '@/components/common/StatusPill.vue';
 import * as insApi from '@/api/instructor';
+import CourseCover from '@/components/course/CourseCover.vue';
 
 const d = ref<Awaited<ReturnType<typeof insApi.dashboard>> | null>(null);
 onMounted(async () => (d.value = await insApi.dashboard()));
@@ -57,7 +58,7 @@ const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
             <tr v-for="c in d.courses" :key="c.id">
               <td>
                 <div class="d-flex align-center ga-4">
-                  <span class="cthumb"><img v-if="c.thumbnailUrl" :src="c.thumbnailUrl" alt="" /></span>
+                  <span class="cthumb"><CourseCover :image-url="c.thumbnailUrl" :title="c.title" size="sm" /></span>
                   <span class="font-weight-bold">{{ c.title }}</span>
                 </div>
               </td>

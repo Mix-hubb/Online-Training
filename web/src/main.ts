@@ -3,6 +3,9 @@ import { createPinia } from 'pinia';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+import '@fontsource/plus-jakarta-sans/700.css';
+import '@fontsource/plus-jakarta-sans/800.css';
 import '@mdi/font/css/materialdesignicons.css';
 import './styles/main.css';
 
@@ -11,8 +14,9 @@ import { router } from './router';
 import { vuetify } from './plugins/vuetify';
 import { apiHooks } from './api/client';
 import { useAuthStore } from './stores/auth';
+import { vReveal } from './directives/reveal';
 
-const app = createApp(App).use(createPinia()).use(router).use(vuetify);
+const app = createApp(App).use(createPinia()).use(router).use(vuetify).directive('reveal', vReveal);
 
 apiHooks.onAuthError = (code) => {
   const auth = useAuthStore();

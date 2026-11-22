@@ -101,7 +101,8 @@ async function main() {
       summary: 'The rules every person on a mine site must know before day one.',
       description: 'Personal protective equipment, site rules, hazard spotting and what to do in an emergency.',
       outcomes: ['Choose the right PPE for each area', 'Spot the most common hazards', 'Know the emergency steps'],
-      thumbnailUrl: svg('cover-safety', '', '#1F6FB8', '#FFFFFF'),
+      // No cover image: the site draws one from the course topic (CourseCover.vue).
+      thumbnailUrl: null,
       level: 'BEGINNER',
       status: 'PUBLISHED',
       publishedAt: new Date(),
@@ -151,7 +152,8 @@ async function main() {
       summary: 'Measure, map and check underground workings with confidence.',
       description: 'Survey control, instruments, traverses and how to check your work. Ends with a written test graded by the instructor.',
       outcomes: ['Set up survey control underground', 'Run and close a traverse', 'Write a clear survey report'],
-      thumbnailUrl: svg('cover-survey', '', '#DCE8F5', '#1F6FB8'),
+      // No cover image: the site draws one from the course topic (CourseCover.vue).
+      thumbnailUrl: null,
       level: 'INTERMEDIATE',
       status: 'PUBLISHED',
       publishedAt: new Date(),

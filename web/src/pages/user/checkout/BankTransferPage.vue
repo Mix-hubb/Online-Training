@@ -9,6 +9,7 @@ import * as payments from '@/api/payments';
 import { errorMessage, fileToBase64 } from '@/api/client';
 import type { BankDetails, Order, Slip } from '@/types';
 import { dateTime, money } from '@/utils/format';
+import CourseCover from '@/components/course/CourseCover.vue';
 
 const route = useRoute();
 const id = String(route.params.orderId);
@@ -135,7 +136,7 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
         <aside class="panel summary" aria-label="Order summary">
           <h2 class="h2">Order summary</h2>
           <div class="d-flex ga-3">
-            <span class="sthumb"><img v-if="order.course?.thumbnailUrl" :src="order.course.thumbnailUrl" alt="" /></span>
+            <span class="sthumb"><CourseCover :image-url="order.course?.thumbnailUrl" :title="order.course?.title ?? ''" size="sm" /></span>
             <div class="text-body-2 font-weight-bold" style="line-height: 1.35">{{ order.course?.title }}</div>
           </div>
           <div class="total"><span>Total</span><span>{{ money(order.amountMinor, order.currency) }}</span></div>

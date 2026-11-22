@@ -1,27 +1,43 @@
 <script setup lang="ts">
-// Course card (mockup): image with category tag, title, level + lessons tags, price and "View course".
+// Course card: cover (image or drawn from the topic), topic chip in the topic color, title, summary,
+// level / lessons / length, and the price with USD and THB labelled on separate lines.
+import { computed } from 'vue';
+import CourseCover from './CourseCover.vue';
 import type { CourseCard } from '@/types';
-import { levelLabel, priceLabel } from '@/utils/format';
+import { duration, levelLabel, money } from '@/utils/format';
+import { topicTone } from '@/utils/topic';
 
-defineProps<{ course: CourseCard; cta?: string }>();
+const props = defineProps<{ course: CourseCard; cta?: string }>();
+const tone = computed(() => topicTone(props.course.category?.name || props.course.title));
+const enrolled = computed(() => props.cta === 'Enrolled');
 </script>
 
 <template>
   <div class="card-wrap h-100">
     <router-link :to="`/courses/${course.slug}`" class="course-card panel">
       <div class="thumb">
-        <img v-if="course.thumbnailUrl" :src="course.thumbnailUrl" alt="" loading="lazy" />
-        <span v-if="course.category" class="cat">{{ course.category.name }}</span>
+        <CourseCover :image-url="course.thumbnailUrl" :topic="course.category?.name" :title="course.title" />
+        <span v-if="course.isFree" class="ribbon">Free course</span>
       </div>
       <div class="body">
+        <span v-if="course.category" class="topic" :style="{ background: `var(--ot-topic-${tone}-bg)`, color: `var(--ot-topic-${tone}-fg)` }">{{ course.category.name }}</span>
         <div class="title">{{ course.title }}</div>
-        <div class="d-flex flex-wrap ga-2">
-          <span class="tag">{{ levelLabel[course.level] }}</span>
-          <span class="tag">{{ course.lessonCount }} {{ course.lessonCount === 1 ? 'lesson' : 'lessons' }}</span>
+        <p v-if="course.summary" class="summary clamp-2">{{ course.summary }}</p>
+        <div class="meta">
+          <span><v-icon icon="mdi-signal-cellular-2" size="16" />{{ levelLabel[course.level] }}</span>
+          <span><v-icon icon="mdi-play-circle-outline" size="16" />{{ course.lessonCount }} {{ course.lessonCount === 1 ? 'lesson' : 'lessons' }}</span>
+          <span v-if="course.durationSec"><v-icon icon="mdi-clock-outline" size="16" />{{ duration(course.durationSec) }}</span>
         </div>
         <div class="foot">
-          <span class="price" :class="{ free: course.isFree }">{{ priceLabel(course) }}</span>
-          <span class="cta">{{ cta ?? 'View course' }}</span>
+          <span v-if="course.isFree" class="price free">Free</span>
+          <span v-else class="price">
+            <span v-if="course.priceMinor > 0" class="usd">{{ money(course.priceMinor, 'usd') }}<small>USD</small></span>
+            <span v-if="course.priceThbMinor" class="thb">{{ money(course.priceThbMinor, 'thb') }}</span>
+          </span>
+          <span class="cta" :class="{ enrolled }">
+            <v-icon v-if="enrolled" icon="mdi-check-circle" size="16" />{{ cta ?? 'View course' }}
+            <v-icon v-if="!enrolled" icon="mdi-arrow-right" size="16" class="arrow" />
+          </span>
         </div>
       </div>
     </router-link>
@@ -40,60 +56,143 @@ defineProps<{ course: CourseCard; cta?: string }>();
   overflow: hidden;
   text-decoration: none;
   color: var(--ot-text);
-  transition: border-color 0.15s;
+  transition: border-color var(--ot-transition), box-shadow 0.25s var(--ot-ease-out), transform 0.25s var(--ot-ease-out);
 }
 .course-card:hover {
-  border-color: var(--ot-info-border);
+  transform: translateY(-3px);
+}
+.course-card:hover :deep(img),
+.course-card:hover :deep(.mark) {
+  transform: scale(1.04);
+}
+.course-card:hover :deep(.size-md .mark) {
+  transform: translateY(-50%) scale(1.06);
+}
+.course-card:hover :deep(.ghost) {
+  transform: rotate(-4deg) scale(1.05);
 }
 .thumb {
   position: relative;
-  height: 160px;
-  background: var(--ot-thumb);
+  height: 168px;
+  border-bottom: 1px solid var(--ot-border);
 }
-.thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.cat {
+.ribbon {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
-  font-size: 12px;
-  color: var(--ot-muted);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 4px 10px;
+  top: 12px;
+  right: 12px;
+  padding: 3px 10px;
   border-radius: var(--ot-radius-pill);
+  background: var(--ot-hl);
+  color: var(--ot-navy);
+  font-size: var(--ot-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .body {
-  padding: 18px;
+  padding: 18px 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
 }
-.title {
-  font-size: 17px;
+.topic {
+  align-self: flex-start;
+  font-size: var(--ot-fs-xs);
   font-weight: 600;
-  line-height: 1.35;
+  padding: 3px 10px;
+  border-radius: var(--ot-radius-pill);
+}
+.title {
+  font-family: var(--ot-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.summary {
+  margin: 0;
+  font-size: var(--ot-fs-sm);
+  line-height: 1.55;
+  color: var(--ot-muted);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: var(--ot-fs-sm);
+  color: var(--ot-text-2);
+}
+.meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.meta :deep(.v-icon) {
+  color: var(--ot-faint);
 }
 .foot {
   margin-top: auto;
-  padding-top: 6px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--ot-border);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 12px;
 }
 .price {
-  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.usd {
+  font-family: var(--ot-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.usd small {
+  margin-left: 4px;
+  font-family: var(--ot-font);
+  font-size: var(--ot-fs-xs);
   font-weight: 600;
+  color: var(--ot-muted);
+}
+.thb {
+  font-size: var(--ot-fs-sm);
+  color: var(--ot-muted);
 }
 .price.free {
+  font-family: var(--ot-font-display);
+  font-size: 22px;
+  font-weight: 800;
   color: var(--ot-success);
 }
 .cta {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--ot-fs-sm);
+  font-weight: 600;
   color: var(--ot-accent-strong);
+}
+.cta.enrolled {
+  color: var(--ot-success);
+}
+.arrow {
+  transition: transform var(--ot-transition);
+}
+.course-card:hover .arrow {
+  transform: translateX(3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .course-card,
+  .course-card:hover,
+  .course-card:hover :deep(img),
+  .course-card:hover :deep(.mark) {
+    transition: none;
+    transform: none;
+  }
 }
 </style>

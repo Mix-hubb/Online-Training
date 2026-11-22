@@ -11,6 +11,7 @@ import * as taxonomy from '@/api/admin/taxonomy';
 import { errorMessage } from '@/api/client';
 import type { Paged } from '@/types';
 import { date, priceLabel } from '@/utils/format';
+import CourseCover from '@/components/course/CourseCover.vue';
 
 const q = ref({ q: '', status: '', category: '', page: 1 });
 const data = ref<Paged<api.AdminCourseRow> | null>(null);
@@ -141,7 +142,7 @@ async function doDelete() {
         >
           <v-icon icon="mdi-drag-vertical" size="20" class="grip" aria-hidden="true" />
           <span class="num">{{ i + 1 }}</span>
-          <span class="cthumb sm"><img v-if="p.thumbnailUrl" :src="p.thumbnailUrl" alt="" /></span>
+          <span class="cthumb sm"><CourseCover :image-url="p.thumbnailUrl" :title="p.title" size="sm" /></span>
           <span class="flex-grow-1 font-weight-medium pin-title">{{ p.title }}</span>
           <button type="button" class="icon-btn" :disabled="pinBusy || i === 0" :aria-label="`Move ${p.title} up`" @click="move(i, i - 1)"><v-icon icon="mdi-chevron-up" size="18" /></button>
           <button type="button" class="icon-btn" :disabled="pinBusy || i === pinned.length - 1" :aria-label="`Move ${p.title} down`" @click="move(i, i + 1)"><v-icon icon="mdi-chevron-down" size="18" /></button>
@@ -184,7 +185,7 @@ async function doDelete() {
             </td>
             <td>
               <div class="d-flex align-center ga-4">
-                <span class="cthumb"><img v-if="c.thumbnailUrl" :src="c.thumbnailUrl" alt="" /></span>
+                <span class="cthumb"><CourseCover :image-url="c.thumbnailUrl" :title="c.title" size="sm" /></span>
                 <div>
                   <div class="font-weight-bold">{{ c.title }}</div>
                   <div class="text-caption text-muted mt-1">{{ c.category ?? 'No category' }} · {{ c.lessons }} {{ c.lessons === 1 ? 'lesson' : 'lessons' }}</div>
