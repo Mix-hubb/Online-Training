@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Partner logo strip (mockup): a white panel of partner logos. Only partners with showLogo, ordered by logoOrder (API).
+// Partner logo strip: logos straight on the page background (no panel behind them). Only partners with showLogo, ordered by logoOrder (API).
 // Scrolls slowly and without stopping, but only when the logos do not fit in the panel; if they fit, it stays still.
 // Speed is fixed in px per second, so it looks the same with few or many partners.
 // Client asked that it never stops: no pause on hover, and it keeps moving even with "reduce motion" on (slow speed).
@@ -35,7 +35,7 @@ watch(
 </script>
 
 <template>
-  <section ref="box" class="marq panel" aria-label="Our partners">
+  <section ref="box" class="marq" aria-label="Our partners">
     <div class="track" :class="{ moving }" :style="{ animationDuration: duration }">
       <!-- Two identical copies when moving: sliding by one copy (-50%) loops without a jump. -->
       <div v-for="copy in moving ? 2 : 1" :key="copy" :ref="copy === 1 ? (el) => (group = el as HTMLElement) : undefined" class="group" :aria-hidden="copy > 1 ? 'true' : undefined">
@@ -62,7 +62,7 @@ watch(
 .marq {
   position: relative;
   overflow: hidden;
-  height: 68px;
+  height: 52px;
   display: flex;
   align-items: center;
 }
@@ -78,7 +78,10 @@ watch(
 .group {
   display: flex;
   gap: 16px;
-  padding-left: 16px;
+}
+/* While scrolling, keep the same gap between the end of one copy and the start of the next. */
+.moving .group {
+  padding-right: 16px;
 }
 @keyframes marquee {
   from {
