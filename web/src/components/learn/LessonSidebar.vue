@@ -98,7 +98,7 @@ defineEmits<{ select: [string] }>();
   flex: none;
   width: 28px;
   height: 28px;
-  border-radius: var(--ot-radius-card);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,11 +106,12 @@ defineEmits<{ select: [string] }>();
   color: var(--ot-muted);
 }
 .ico.ok {
-  background: var(--ot-success-bg);
-  color: var(--ot-success);
+  background: var(--ot-success);
+  color: var(--ot-surface);
 }
 .ico.cur {
-  background: var(--ot-accent-tint);
-  color: var(--ot-accent-strong);
+  background: var(--ot-accent);
+  color: var(--ot-surface);
+  box-shadow: 0 0 0 4px var(--ot-accent-tint);
 }
 </style>

@@ -58,6 +58,9 @@ const heading = computed(() => {
     <v-skeleton-loader v-else-if="!state || !attempt" type="article" color="surface" />
     <template v-else>
       <section class="hero" :class="tone">
+        <div v-if="state === 'passed'" class="confetti" aria-hidden="true">
+          <i v-for="n in 18" :key="n" :style="{ '--i': n }" />
+        </div>
         <div class="d-flex flex-wrap align-center ga-5">
           <div class="ring">
             <v-icon v-if="state === 'pending'" icon="mdi-account-clock-outline" size="36" />
@@ -125,6 +128,8 @@ const heading = computed(() => {
   gap: 24px;
 }
 .hero {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--ot-info-border);
   background: var(--ot-info-bg);
   border-radius: var(--ot-radius-card);
@@ -148,6 +153,49 @@ const heading = computed(() => {
   border-color: var(--ot-danger-border);
   background: var(--ot-danger-bg);
   --tone: var(--ot-danger);
+}
+/* A short burst of confetti on a pass; none when the device asks for less motion. */
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  top: -12px;
+  left: calc(var(--i) * 5.4%);
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--ot-hl);
+  opacity: 0;
+  animation: drop 2.4s var(--ot-ease-out) calc(var(--i) * 60ms) 1 forwards;
+}
+.confetti i:nth-child(3n) {
+  background: var(--ot-accent);
+}
+.confetti i:nth-child(3n + 1) {
+  background: var(--ot-success);
+  width: 6px;
+}
+.confetti i:nth-child(4n) {
+  background: var(--ot-topic-3-fg);
+  height: 8px;
+}
+@keyframes drop {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(260px) rotate(540deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
 }
 .ring {
   width: 96px;

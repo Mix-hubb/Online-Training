@@ -211,7 +211,7 @@ onMounted(async () => {
 .bar > span {
   display: block;
   height: 100%;
-  background: var(--ot-accent);
+  background: linear-gradient(90deg, var(--ot-accent) 0%, var(--ot-topic-2-fg) 100%);
 }
 .cols {
   display: flex;

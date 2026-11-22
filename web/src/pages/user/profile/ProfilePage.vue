@@ -9,6 +9,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useNotificationsStore } from '@/stores/notifications';
 import type { LearningStatus, MyCourse } from '@/types';
 import { date, dateTime, initials, learningStatusLabel } from '@/utils/format';
+import CourseCover from '@/components/course/CourseCover.vue';
+import ProgressRing from '@/components/common/ProgressRing.vue';
 
 const auth = useAuthStore();
 const notes = useNotificationsStore();
@@ -95,7 +97,7 @@ const action: Record<LearningStatus, string> = {
         <v-skeleton-loader v-if="!courses" type="list-item-avatar-two-line@3" color="surface" />
         <EmptyState v-else-if="!shown.length" class="panel" icon="mdi-school-outline" title="No courses here yet" text="Courses you enrol in appear here." action-label="Browse courses" action-to="/" />
         <article v-for="c in shown" :key="c.enrollmentId" class="row panel">
-          <span class="thumb"><img v-if="c.course.thumbnailUrl" :src="c.course.thumbnailUrl" alt="" /></span>
+          <span class="thumb"><CourseCover :image-url="c.course.thumbnailUrl" :title="c.course.title" size="sm" /></span>
           <div class="flex-grow-1 d-flex flex-column ga-2" style="min-width: 0">
             <router-link :to="`/courses/${c.course.slug}`" class="title">{{ c.course.title }}</router-link>
             <div class="d-flex flex-wrap align-center ga-2">
@@ -103,11 +105,8 @@ const action: Record<LearningStatus, string> = {
               <span v-if="c.cycle > 1" class="pill neutral">Round {{ c.cycle }}</span>
               <span class="text-body-2 text-muted">{{ c.completedLessons }} of {{ c.totalLessons }} lessons · Last activity {{ date(c.lastActivity) }}</span>
             </div>
-            <div class="d-flex align-center ga-2" style="max-width: 420px">
-              <span class="bar" role="progressbar" aria-label="Lesson progress" :aria-valuenow="c.percent" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: `${c.percent}%` }" /></span>
-              <span class="text-caption text-muted">{{ c.percent }}%</span>
-            </div>
           </div>
+          <ProgressRing :percent="c.percent" :label="`${c.course.title} lesson progress`" />
           <div class="d-flex flex-wrap ga-2">
             <v-btn v-if="c.certificate" variant="outlined" :to="`/certificates/${c.certificate.number}`">Certificate</v-btn>
             <v-btn color="primary" :to="target(c)">{{ action[c.status] }}</v-btn>
@@ -119,7 +118,8 @@ const action: Record<LearningStatus, string> = {
         <h2 id="cert-h" class="section-title my-0">Certificates</h2>
         <div v-if="certs && !certs.length" class="panel pa-5 text-body-2 text-muted">No certificates yet. Pass a course's final test to earn one.</div>
         <div class="certs">
-          <div v-for="c in certs ?? []" :key="c.id" class="panel pa-5 d-flex flex-column ga-2">
+          <div v-for="c in certs ?? []" :key="c.id" class="panel cert pa-5 d-flex flex-column ga-2">
+            <span class="icon-tile hl mb-1"><v-icon icon="mdi-certificate-outline" /></span>
             <div class="text-caption text-muted mono">{{ c.number }}</div>
             <div class="font-weight-bold">{{ c.course.title }}</div>
             <div class="text-caption text-muted">Issued {{ date(c.issuedAt) }}</div>
@@ -239,7 +239,19 @@ const action: Record<LearningStatus, string> = {
 .bar > span {
   display: block;
   height: 6px;
-  background: var(--ot-accent);
+  background: linear-gradient(90deg, var(--ot-accent) 0%, var(--ot-topic-2-fg) 100%);
+}
+/* Certificate cards: amber ribbon on top */
+.cert {
+  position: relative;
+  overflow: hidden;
+}
+.cert::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--ot-hl) 0%, #f7cf74 100%);
 }
 .certs {
   display: grid;
