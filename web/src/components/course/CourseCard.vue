@@ -61,15 +61,8 @@ const enrolled = computed(() => props.cta === 'Enrolled');
 .course-card:hover {
   transform: translateY(-3px);
 }
-.course-card:hover :deep(img),
-.course-card:hover :deep(.mark) {
+.course-card:hover :deep(img) {
   transform: scale(1.04);
-}
-.course-card:hover :deep(.size-md .mark) {
-  transform: translateY(-50%) scale(1.06);
-}
-.course-card:hover :deep(.ghost) {
-  transform: rotate(-4deg) scale(1.05);
 }
 .thumb {
   position: relative;
@@ -189,8 +182,7 @@ const enrolled = computed(() => props.cta === 'Enrolled');
 @media (prefers-reduced-motion: reduce) {
   .course-card,
   .course-card:hover,
-  .course-card:hover :deep(img),
-  .course-card:hover :deep(.mark) {
+  .course-card:hover :deep(img) {
     transition: none;
     transform: none;
   }

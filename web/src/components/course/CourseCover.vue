@@ -1,25 +1,21 @@
 <script setup lang="ts">
-// Course cover. Shows the uploaded image when there is one; otherwise draws a cover from the course topic:
-// the topic's color pair (same topic = same color everywhere), a topic icon and a light grid pattern.
+// Course cover. Shows the uploaded image when there is one; otherwise a plain cover in the topic's color
+// (same topic = same color everywhere) with a light grid pattern. No icons.
 import { computed } from 'vue';
-import { topicIcon, topicTone } from '@/utils/topic';
+import { topicTone } from '@/utils/topic';
 
 const props = withDefaults(
   defineProps<{ imageUrl?: string | null; topic?: string | null; title: string; size?: 'sm' | 'md' | 'lg'; label?: boolean }>(),
   { imageUrl: null, topic: null, size: 'md', label: false },
 );
-const key = computed(() => props.topic || props.title);
-const tone = computed(() => topicTone(key.value));
-const icon = computed(() => topicIcon(`${props.topic ?? ''} ${props.title}`));
+const tone = computed(() => topicTone(props.topic || props.title));
 </script>
 
 <template>
-  <div class="cover" :class="[`size-${size}`, { drawn: !imageUrl }]" :style="{ '--c-bg': `var(--ot-topic-${tone}-bg)`, '--c-fg': `var(--ot-topic-${tone}-fg)` }">
+  <div class="cover" :class="`size-${size}`" :style="{ '--c-bg': `var(--ot-topic-${tone}-bg)`, '--c-fg': `var(--ot-topic-${tone}-fg)` }">
     <img v-if="imageUrl" :src="imageUrl" alt="" loading="lazy" />
     <template v-else>
       <span class="grid-bg" aria-hidden="true" />
-      <span class="ghost" aria-hidden="true"><v-icon :icon="icon" /></span>
-      <span class="mark" aria-hidden="true"><v-icon :icon="icon" /></span>
       <span v-if="label && topic" class="topic">{{ topic }}</span>
     </template>
   </div>
@@ -52,63 +48,8 @@ const icon = computed(() => topicIcon(`${props.topic ?? ''} ${props.title}`));
   background-size: 24px 24px;
   mask-image: linear-gradient(110deg, transparent 20%, #000 90%);
 }
-.ghost {
-  position: absolute;
-  right: -6%;
-  bottom: -22%;
-  color: color-mix(in srgb, var(--c-fg) 16%, transparent);
-  transform: rotate(-12deg);
-  transition: transform 0.5s var(--ot-ease-out);
-}
-.ghost :deep(.v-icon) {
-  font-size: 180px;
-}
-.size-sm .ghost {
-  display: none;
-}
-.size-lg .ghost :deep(.v-icon) {
-  font-size: 360px;
-}
-.mark {
-  position: absolute;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 14px;
-  background: var(--ot-surface);
-  color: var(--c-fg);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--c-fg) 22%, transparent);
-  transition: transform 0.4s var(--ot-ease-out);
-}
-.mark :deep(.v-icon) {
-  font-size: 34px;
-}
-.size-sm .mark {
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-}
-.size-sm .mark :deep(.v-icon) {
-  font-size: 22px;
-}
 .size-sm .grid-bg {
   background-size: 14px 14px;
-}
-.size-lg .mark {
-  left: 48px;
-  width: 112px;
-  height: 112px;
-  border-radius: 24px;
-}
-.size-lg .mark :deep(.v-icon) {
-  font-size: 60px;
 }
 .size-lg .grid-bg {
   background-size: 36px 36px;
