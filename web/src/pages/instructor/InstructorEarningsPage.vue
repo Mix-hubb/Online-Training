@@ -43,24 +43,24 @@ onMounted(async () => (d.value = await insApi.earnings()));
         <PayoutsTable :payouts="d.payouts" />
       </section>
     </template>
+  </div>
+</template>
 
 <style scoped>
 .shares {
   list-style: none;
   margin: 0;
-  padding: 0 20px;
+  padding: 0 var(--ot-space-3);
 }
 .shares li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
+  gap: var(--ot-space-2);
+  padding: var(--ot-space-1-5) 0;
   border-top: 1px solid var(--ot-border);
 }
 .shares li:first-child {
   border-top: 0;
 }
 </style>
-  </div>
-</template>
