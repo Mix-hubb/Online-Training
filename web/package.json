@@ -1,0 +1,29 @@
+{
+  "name": "online-training-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/fraunces": "^5.2.5",
+    "@fontsource/inter": "^5.2.5",
+    "@mdi/font": "^7.4.47",
+    "hls.js": "^1.6.2",
+    "pinia": "^3.0.2",
+    "tus-js-client": "^4.3.1",
+    "vue": "^3.5.14",
+    "vue-router": "^4.5.1",
+    "vuetify": "^3.8.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-vuetify": "^2.1.1",
+    "vue-tsc": "^2.2.10"
+  }
+}

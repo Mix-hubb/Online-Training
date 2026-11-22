@@ -1,0 +1,193 @@
+<script setup lang="ts">
+// Result (spec 6.5), four states: passed (+certificate, review), waiting for instructor,
+// not passed with attempts left (retry), not passed and no attempts left (lessons restarted).
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import EmptyState from '@/components/common/EmptyState.vue';
+import * as certApi from '@/api/certificates';
+import * as learningApi from '@/api/learning';
+import * as quizApi from '@/api/quiz';
+import type { Attempt, QuizOverview } from '@/types';
+
+const route = useRoute();
+const router = useRouter();
+const slug = String(route.params.slug);
+const attempt = ref<Attempt | null>(null);
+const ov = ref<QuizOverview | null>(null);
+const cert = ref<{ id: string; number: string } | null>(null);
+const failed = ref(false);
+
+onMounted(async () => {
+  try {
+    const d = await learningApi.learn(slug);
+    ov.value = await quizApi.overview(d.course.id);
+    const id = String(route.params.attemptId ?? '') || ov.value.history[0]?.id;
+    if (!id) return void router.replace(`/learn/${slug}/quiz`);
+    attempt.value = await quizApi.attempt(id);
+    if (attempt.value.status === 'IN_PROGRESS') return void router.replace(`/learn/${slug}/quiz`);
+    if (attempt.value.passed) {
+      const c = (await certApi.mine()).find((x) => x.course.slug === slug);
+      if (c) cert.value = { id: c.id, number: c.number };
+    }
+  } catch {
+    failed.value = true;
+  }
+});
+
+const state = computed(() => {
+  const a = attempt.value;
+  if (!a || !ov.value) return null;
+  if (a.status === 'PENDING_REVIEW') return 'pending';
+  if (a.passed) return 'passed';
+  if (ov.value.cycle > a.cycle) return 'restarted';
+  return ov.value.attemptsLeft > 0 ? 'retry' : 'restarted';
+});
+const tone = computed(() => ({ passed: 'success', pending: 'info', retry: 'warning', restarted: 'danger' })[state.value ?? 'pending']);
+const eyebrow = computed(() => ({ passed: 'Passed', pending: 'Waiting for grading', retry: 'Not passed yet', restarted: 'No attempts left' })[state.value ?? 'pending']);
+const heading = computed(() => {
+  if (state.value === 'passed') return 'You passed the final test';
+  if (state.value === 'pending') return 'Your instructor is checking your answers';
+  if (state.value === 'retry') return `You need ${attempt.value?.passPercent ?? 0}% to pass`;
+  return 'The lessons have restarted';
+});
+</script>
+
+<template>
+  <div class="page result">
+    <EmptyState v-if="failed" class="panel" icon="mdi-alert-circle-outline" title="The result could not be loaded" action-label="Back to the course" :action-to="`/learn/${slug}`" />
+    <v-skeleton-loader v-else-if="!state || !attempt" type="article" color="surface" />
+    <template v-else>
+      <section class="hero" :class="tone">
+        <div class="d-flex flex-wrap align-center ga-5">
+          <div class="ring">
+            <v-icon v-if="state === 'pending'" icon="mdi-account-clock-outline" size="36" />
+            <template v-else>{{ attempt.percent ?? 0 }}%</template>
+          </div>
+          <div class="d-flex flex-column ga-1" style="flex: 1 1 260px">
+            <span class="eyebrow">{{ eyebrow }}</span>
+            <h1 class="htitle">{{ heading }}</h1>
+            <p class="hsub">
+              <template v-if="state === 'pending'">Your written answers are being checked. We will notify you when the result is ready.</template>
+              <template v-else>
+                Score {{ attempt.score }} of {{ attempt.maxScore }} points · Pass mark {{ attempt.passPercent }}%
+                <template v-if="state === 'retry'"> · {{ ov!.attemptsLeft }} {{ ov!.attemptsLeft === 1 ? 'attempt' : 'attempts' }} left</template>
+              </template>
+            </p>
+          </div>
+        </div>
+        <p v-if="state === 'retry'" class="hsub">Correct answers stay hidden until you pass. Review the lessons, then try again.</p>
+        <p v-if="state === 'restarted'" class="hsub">The lessons have restarted. Watch them again to unlock the test with {{ ov!.maxAttempts }} new attempts.</p>
+        <div class="d-flex flex-wrap ga-3">
+          <template v-if="state === 'passed'">
+            <v-btn v-if="cert" color="primary" min-height="48" :to="`/certificates/${cert.number}`">View certificate</v-btn>
+            <v-btn v-if="cert" variant="outlined" min-height="48" prepend-icon="mdi-download" @click="certApi.downloadPdf(cert.id, cert.number)">Download PDF</v-btn>
+            <v-btn variant="outlined" min-height="48" to="/profile">Back to my learning</v-btn>
+          </template>
+          <v-btn v-else-if="state === 'pending'" variant="outlined" min-height="48" :to="`/learn/${slug}`">Back to the course</v-btn>
+          <template v-else-if="state === 'retry'">
+            <v-btn color="primary" min-height="48" :to="`/learn/${slug}/quiz`">Try again ({{ ov!.attemptsLeft }} left)</v-btn>
+            <v-btn variant="outlined" min-height="48" :to="`/learn/${slug}`">Review lessons</v-btn>
+          </template>
+          <v-btn v-else color="primary" min-height="48" :to="`/learn/${slug}`">Start the lessons again</v-btn>
+        </div>
+      </section>
+
+      <section v-if="attempt.review?.length" aria-labelledby="rev-h" class="d-flex flex-column ga-3">
+        <h2 id="rev-h" class="section-title my-0">Review your answers</h2>
+        <p class="text-body-2 text-muted ma-0">Correct answers are shown because you passed.</p>
+        <div v-for="(r, i) in attempt.review" :key="r.id" class="panel pa-5 d-flex flex-column ga-2">
+          <div class="d-flex justify-space-between ga-3 text-body-2">
+            <span class="text-muted">Question {{ i + 1 }} · {{ r.type === 'MCQ' ? 'Multiple choice' : 'Written' }}</span>
+            <span class="font-weight-bold" :style="{ color: r.type !== 'MCQ' ? 'var(--ot-accent-strong)' : r.isRight ? 'var(--ot-success)' : 'var(--ot-danger)' }">
+              {{ r.type !== 'MCQ' ? `${r.pointsAwarded} of ${r.points} points` : r.isRight ? 'Correct' : 'Incorrect' }}
+            </span>
+          </div>
+          <div class="qtext">{{ r.text }}</div>
+          <template v-if="r.type === 'MCQ'">
+            <div class="text-body-2 text-2">Your answer: {{ r.options?.find((o) => o.id === r.yourOptionId)?.text ?? '(no answer)' }}</div>
+            <div class="text-body-2" style="color: var(--ot-success)">Correct answer: {{ r.options?.filter((o) => o.isCorrect).map((o) => o.text).join(', ') }}</div>
+          </template>
+          <template v-else>
+            <div class="text-body-2 text-2" style="white-space: pre-line">{{ r.yourEssay || '(no answer)' }}</div>
+            <div v-if="r.comment" class="callout">Instructor comment: {{ r.comment }}</div>
+          </template>
+        </div>
+      </section>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.result {
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.hero {
+  border: 1px solid var(--ot-info-border);
+  background: var(--ot-info-bg);
+  border-radius: var(--ot-radius-card);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  --tone: var(--ot-accent);
+}
+.hero.success {
+  border-color: var(--ot-success-border);
+  background: var(--ot-success-bg);
+  --tone: var(--ot-success);
+}
+.hero.warning {
+  border-color: var(--ot-warning-border);
+  background: var(--ot-warning-bg);
+  --tone: var(--ot-warning);
+}
+.hero.danger {
+  border-color: var(--ot-danger-border);
+  background: var(--ot-danger-bg);
+  --tone: var(--ot-danger);
+}
+.ring {
+  width: 96px;
+  height: 96px;
+  border-radius: 48px;
+  border: 4px solid var(--tone);
+  color: var(--ot-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  background: var(--ot-surface);
+}
+.ring .v-icon {
+  color: var(--tone);
+}
+.eyebrow {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tone);
+}
+.htitle {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.hsub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ot-text-2);
+}
+.qtext {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+</style>
