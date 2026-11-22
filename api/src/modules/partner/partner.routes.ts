@@ -24,18 +24,35 @@ export function stripPartner<T extends { partnerId: string; partnerName: string 
   return rows.map(({ partnerId: _p, partnerName: _n, ...rest }) => rest);
 }
 
-/** Totals per currency, the partner's current share of total revenue, and the courses its entries come from (for the filter). */
+/**
+ * Totals per currency, the partner's current share, and the courses its entries come from (for the filter).
+ * sharePercentBp = co-investor share of what is left after instructor shares.
+ * courseShares = for an instructor, the current share of each assigned course (empty for co-investors).
+ */
 export async function partnerSummary(partnerId: string, q: ReturnType<typeof ownQuery>) {
   const [partner, courseIds] = await Promise.all([
-    prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, select: { sharePercentBp: true } }),
+    prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, select: { sharePercentBp: true, userId: true } }),
     prisma.revenueEntry.findMany({ where: { partnerId }, distinct: ['courseId'], select: { courseId: true } }),
   ]);
+  const assigned = partner.userId
+    ? await prisma.courseInstructor.findMany({
+        where: { userId: partner.userId },
+        select: { sharePercentBp: true, course: { select: { id: true, title: true, slug: true } } },
+        orderBy: { course: { title: 'asc' } },
+      })
+    : [];
+  const ids = new Set([...courseIds.map((c) => c.courseId), ...assigned.map((a) => a.course.id)]);
   const courses = await prisma.course.findMany({
-    where: { id: { in: courseIds.map((c) => c.courseId) } },
+    where: { id: { in: [...ids] } },
     select: { id: true, title: true, slug: true },
     orderBy: { title: 'asc' },
   });
-  return { totals: await summary(q), sharePercentBp: partner.sharePercentBp, courses };
+  return {
+    totals: await summary(q),
+    sharePercentBp: partner.sharePercentBp,
+    courseShares: assigned.map((a) => ({ ...a.course, sharePercentBp: a.sharePercentBp })),
+    courses,
+  };
 }
 
 partnerRouter.get(

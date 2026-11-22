@@ -180,7 +180,8 @@ async function main() {
           },
         },
       },
-      instructors: { create: { userId: instructor.id, assignedBy: admin.id } },
+      // Instructor gets 30% of this course's sales, taken before the co-investor share.
+      instructors: { create: { userId: instructor.id, assignedBy: admin.id, sharePercentBp: 3000 } },
     },
   });
 
@@ -208,11 +209,11 @@ async function main() {
       showLogo: true,
       logoOrder: 1,
       userId: partnerUser.id,
-      sharePercentBp: 2500, // 25% of total revenue (all courses)
+      sharePercentBp: 2500, // 25% of each sale after instructor shares
     },
   });
-  // TODO(open question 2026-11-22): do instructors still get a revenue share? Kept as a partner for now.
-  await prisma.partner.create({ data: { name: instructor.name, userId: instructor.id, sharePercentBp: 1000 } });
+  // The instructor's earnings account. Instructors are paid per course (CourseInstructor.sharePercentBp), never a total share.
+  await prisma.partner.create({ data: { name: instructor.name, userId: instructor.id } });
   // Admin pin: listed first in the learner catalog.
   await prisma.course.update({ where: { id: paid.id }, data: { pinOrder: 1 } });
 

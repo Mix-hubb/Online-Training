@@ -126,7 +126,9 @@ describe('partner portal', () => {
   it('instructor with a share sees own earnings', async () => {
     const { c } = await setup();
     const ins = await makeUser('INSTRUCTOR');
-    await prisma.partner.create({ data: { name: 'Ins', userId: ins.id, sharePercentBp: 500 } });
+    // Instructors are paid per assigned course (2026-11-22), not a share of all sales.
+    await prisma.partner.create({ data: { name: 'Ins', userId: ins.id } });
+    await prisma.courseInstructor.create({ data: { courseId: c.id, userId: ins.id, sharePercentBp: 500 } });
     const b = await makeUser();
     const o = await prisma.order.create({ data: { userId: b.id, courseId: c.id, amountMinor: 10000, currency: 'usd' } });
     await markOrderPaid(o.id);

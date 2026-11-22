@@ -40,8 +40,8 @@ watch(f, load, { deep: true });
       <section class="d-flex flex-column ga-3">
         <h2 class="section-title my-0">Your share</h2>
         <p class="text-body-2 ma-0">
-          <span class="tag accent">{{ percentBp(sum.sharePercentBp) }} of total revenue</span>
-          <span class="text-muted ml-2">from every course. Each entry keeps the percent that applied when the order was paid.</span>
+          <span class="tag accent">{{ percentBp(sum.sharePercentBp) }}</span>
+          <span class="text-muted ml-2">of each paid order on every course, after the course's instructor shares. Each entry keeps the percent that applied when the order was paid.</span>
         </p>
       </section>
     </template>

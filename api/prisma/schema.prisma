@@ -421,10 +421,13 @@ model AuditLog {
 // ===== Added: instructors, video renditions =====
 
 model CourseInstructor {
-  courseId   String
-  userId     String
-  assignedAt DateTime @default(now())
-  assignedBy String? // admin user id
+  courseId       String
+  userId         String
+  assignedAt     DateTime @default(now())
+  assignedBy     String? // admin user id
+  // Instructor's share of THIS course's sales, basis points (3000 = 30%). Taken first; partners split what is left.
+  // Sum over the course's instructors <= 10000 (enforced in code). Snapshotted on each RevenueEntry.
+  sharePercentBp Int      @default(0)
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -456,7 +459,9 @@ model Partner {
   websiteUrl     String?
   showLogo       Boolean  @default(false) // show in the home page / footer partner strip
   logoOrder      Int      @default(0)
-  // Share of TOTAL revenue (all courses), basis points: 2500 = 25%. Sum over all partners <= 10000 (enforced in code).
+  // Co-investor share, basis points: 2500 = 25%, of each sale AFTER the instructor shares of that course.
+  // Sum over all partners <= 10000 (enforced in code). Always 0 for a Partner linked to an INSTRUCTOR account:
+  // instructors are paid per course (CourseInstructor.sharePercentBp).
   sharePercentBp Int      @default(0)
   createdAt      DateTime @default(now())
 
@@ -471,7 +476,8 @@ model RevenueEntry {
   orderId     String
   courseId    String
   currency    String
-  baseMinor   Int // order amount used for the split
+  kind        EntryKind   @default(PARTNER)
+  baseMinor   Int // amount the percent is applied to: order amount (INSTRUCTOR) or what is left after instructors (PARTNER)
   percentBp   Int // snapshot at the time of the order
   amountMinor Int
   status      EntryStatus @default(UNPAID)
@@ -484,6 +490,11 @@ model RevenueEntry {
 
   @@index([partnerId, status])
   @@index([orderId])
+}
+
+enum EntryKind {
+  INSTRUCTOR // instructor's per-course share
+  PARTNER // co-investor share of what is left
 }
 
 model PartnerPayout {

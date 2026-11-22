@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Instructor earnings: only when the instructor is linked to a Partner record with a share.
+// Instructor earnings: the instructor's share of each course they are assigned to (set by the admin per course).
 import { onMounted, ref } from 'vue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
@@ -23,9 +23,16 @@ onMounted(async () => (d.value = await insApi.earnings()));
     <template v-else>
       <RevenueTotalsCards :totals="d.totals" />
       <section class="d-flex flex-column ga-3">
-        <!-- TODO(open question 2026-11-22): whether instructors still get a revenue share. Shown as before for now. -->
-        <h2 class="section-title my-0">Your share</h2>
-        <p class="text-body-2 ma-0"><span class="tag accent">{{ percentBp(d.sharePercentBp) }} of total revenue</span></p>
+        <h2 class="section-title my-0">Your share per course</h2>
+        <p class="text-body-2 text-muted ma-0">You get this share of every paid order on the course. Each entry keeps the percent that applied when the order was paid.</p>
+        <ul v-if="d.courseShares.length" class="shares panel">
+          <li v-for="c in d.courseShares" :key="c.id">
+            <span>{{ c.title }}</span>
+            <span v-if="c.sharePercentBp" class="tag accent">{{ percentBp(c.sharePercentBp) }}</span>
+            <span v-else class="text-caption text-muted">No share</span>
+          </li>
+        </ul>
+        <p v-else class="text-body-2 text-muted ma-0">You are not assigned to a course right now.</p>
       </section>
       <section class="d-flex flex-column ga-3">
         <h2 class="section-title my-0">Entries</h2>
@@ -36,5 +43,24 @@ onMounted(async () => (d.value = await insApi.earnings()));
         <PayoutsTable :payouts="d.payouts" />
       </section>
     </template>
+
+<style scoped>
+.shares {
+  list-style: none;
+  margin: 0;
+  padding: 0 20px;
+}
+.shares li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--ot-border);
+}
+.shares li:first-child {
+  border-top: 0;
+}
+</style>
   </div>
 </template>

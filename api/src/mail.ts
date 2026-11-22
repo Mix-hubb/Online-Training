@@ -3,7 +3,8 @@
 import { Resend } from 'resend';
 import { config } from './config.js';
 
-const resend = config.RESEND_API_KEY ? new Resend(config.RESEND_API_KEY) : null;
+// Tests never reach the real provider, even when .env has a key.
+const resend = config.RESEND_API_KEY && !config.isTest ? new Resend(config.RESEND_API_KEY) : null;
 
 export interface MailInput {
   to: string;

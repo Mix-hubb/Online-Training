@@ -28,6 +28,8 @@ export const earnings = () =>
         partner: { id: string; name: string };
         totals: RevenueTotals;
         sharePercentBp: number;
+        /** Current share of each assigned course, basis points. Old entries keep the percent used at payment time. */
+        courseShares: { id: string; title: string; slug: string; sharePercentBp: number }[];
         courses: { id: string; title: string; slug: string }[];
         rows: RevenueRow[];
         payouts: Payout[];

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Partners (spec 15.8 + 15.9): logo + order on the home page, revenue share, partner login.
-// Revenue share (2026-11-22): ONE percentage of total revenue (all courses) per partner; all partners together <= 100%.
-// A new percentage applies only to orders paid after the change.
-// TODO(open question 2026-11-22): whether instructors still get a revenue share. Instructor partners still work as before.
+// Revenue share (2026-11-22): co-investors have ONE percentage, taken from each sale AFTER that course's instructor shares;
+// all co-investors together <= 100%. Instructors are paid per course (course editor > Instructors tab), so an
+// instructor's row here has no share field. A new percentage applies only to orders paid after the change.
 // Temporary passwords are shown once, here, and never stored in plain text.
 import { computed, onMounted, ref } from 'vue';
 import StatusPill from '@/components/common/StatusPill.vue';
@@ -13,7 +13,7 @@ import { errorMessage, fileToBase64 } from '@/api/client';
 import { money, percentBp } from '@/utils/format';
 
 const rows = ref<api.PartnerRow[]>([]);
-const edit = ref<(api.PartnerInput & { id?: string; sharePercent: string }) | null>(null);
+const edit = ref<(api.PartnerInput & { id?: string; sharePercent: string; instructor?: boolean }) | null>(null);
 const acct = ref<{ id: string; email: string } | null>(null);
 const temp = ref<{ email: string; temporaryPassword: string } | null>(null);
 const del = ref<api.PartnerRow | null>(null);
@@ -48,20 +48,26 @@ const toBp = (v: string) => {
 const formBp = computed(() => (edit.value ? toBp(edit.value.sharePercent) : 0));
 const othersBp = computed(() => rows.value.filter((r) => r.id !== edit.value?.id).reduce((s, r) => s + r.sharePercentBp, 0));
 const formError = computed(() => {
-  if (!edit.value) return '';
+  if (!edit.value || edit.value.instructor) return '';
   if (Number.isNaN(formBp.value)) return 'Enter a number from 0 to 100, up to 2 decimals.';
   if (othersBp.value + formBp.value > 10000) return `All partners would add up to ${percentBp(othersBp.value + formBp.value)}. The maximum is 100%.`;
   return '';
 });
 function openEdit(p?: api.PartnerRow) {
   edit.value = p
-    ? { id: p.id, name: p.name, contact: p.contact, websiteUrl: p.websiteUrl, showLogo: p.showLogo, sharePercent: String(p.sharePercentBp / 100) }
+    ? { id: p.id, name: p.name, contact: p.contact, websiteUrl: p.websiteUrl, showLogo: p.showLogo, sharePercent: String(p.sharePercentBp / 100), instructor: p.kind === 'INSTRUCTOR' }
     : { name: '', contact: '', websiteUrl: '', showLogo: true, sharePercent: '0' };
 }
 async function save() {
   const e = edit.value!;
   if (!e.name?.trim() || formError.value) return;
-  const body = { name: e.name.trim(), contact: e.contact || null, websiteUrl: e.websiteUrl || null, showLogo: e.showLogo, sharePercentBp: formBp.value };
+  const body = {
+    name: e.name.trim(),
+    contact: e.contact || null,
+    websiteUrl: e.websiteUrl || null,
+    showLogo: e.showLogo,
+    ...(e.instructor ? {} : { sharePercentBp: formBp.value }),
+  };
   if (await run(() => (e.id ? api.update(e.id, body) : api.create(body)))) edit.value = null;
 }
 async function logo(p: api.PartnerRow, ev: Event) {
@@ -98,7 +104,8 @@ async function copy() {
     </AdminPageHeader>
     <div class="callout" :class="{ danger: totalBp > 10000 }">
       <span>
-        Each partner gets one share of total revenue from every course. Partners together: <strong>{{ percentBp(totalBp) }}</strong> · company keeps <strong>{{ percentBp(Math.max(0, 10000 - totalBp)) }}</strong>.
+        Instructors are paid first, from the courses they teach (set it in each course's Instructors tab).
+        Co-investors then get their percent of what is left. Co-investors together: <strong>{{ percentBp(totalBp) }}</strong> · company keeps <strong>{{ percentBp(Math.max(0, 10000 - totalBp)) }}</strong> of what is left.
         A new percentage applies only to orders paid after the change.
       </span>
     </div>
@@ -142,7 +149,8 @@ async function copy() {
               </div>
             </td>
             <td class="text-right text-no-wrap">
-              <span v-if="p.sharePercentBp" class="font-weight-bold">{{ percentBp(p.sharePercentBp) }}</span>
+              <span v-if="p.kind === 'INSTRUCTOR'" class="text-caption text-muted">Per course</span>
+              <span v-else-if="p.sharePercentBp" class="font-weight-bold">{{ percentBp(p.sharePercentBp) }}</span>
               <span v-else class="text-caption text-muted">No share</span>
             </td>
             <td><StatusPill :label="p.showLogo ? 'Shown' : 'Hidden'" :tone="p.showLogo ? 'success' : 'neutral'" /></td>
@@ -171,14 +179,18 @@ async function copy() {
           <v-text-field v-model="edit.name" label="Name" class="mb-2" />
           <v-text-field v-model="edit.contact" label="Contact (person, email or phone)" class="mb-2" />
           <v-text-field v-model="edit.websiteUrl" label="Website (optional)" placeholder="https://" class="mb-2" />
+          <p v-if="edit.instructor" class="text-body-2 text-muted mb-4">
+            This is an instructor. Their share is set per course, in the course editor's Instructors tab.
+          </p>
           <v-text-field
+            v-else
             v-model="edit.sharePercent"
-            label="Revenue share of total revenue (%)"
+            label="Share of each sale after instructors (%)"
             inputmode="decimal"
             suffix="%"
             class="mb-2"
             :error-messages="formError || undefined"
-            :hint="`Other partners: ${percentBp(othersBp)} · available: ${percentBp(Math.max(0, 10000 - othersBp))}. Applies to all courses.`"
+            :hint="`Other co-investors: ${percentBp(othersBp)} · available: ${percentBp(Math.max(0, 10000 - othersBp))}. Applies to all courses, after instructor shares.`"
             persistent-hint
           />
           <v-switch v-model="edit.showLogo" label="Show logo on the home page" color="primary" hide-details />

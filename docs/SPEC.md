@@ -251,7 +251,11 @@ Ledger percent snapshot, payout covers only unpaid entries, max 2 instructors, i
 - `markOrderPaid()` writes one `RevenueEntry` per partner with a share > 0, snapshotting the percent on the entry. Changing a partner's percent later never changes existing entries. Entries are never edited or deleted.
 - Report filters (date range, course, partner, currency), CSV export, "Mark as paid" and per-currency reporting are unchanged.
 - Admin UI: the percentage is set on `/admin/partners` (create/edit). The course editor has no revenue-share tab.
-- **Open question (do not decide yet):** whether instructors still get a revenue share. Instructor-earnings code is unchanged and marked with a TODO.
+- ~~Open question: whether instructors still get a revenue share.~~ **Decided 2026-11-22:** yes, per assigned course:
+  - `CourseInstructor.sharePercentBp` = the instructor's share of THAT course's sales, set by the admin in the course editor's Instructors tab (`POST|PATCH /admin/courses/:id/instructors[/:userId]`). The instructors of one course together <= 100%.
+  - Order of the split: instructor entries first (`kind = INSTRUCTOR`, base = order amount), then co-investor entries (`kind = PARTNER`) on what is left. Example: $100 sale, instructor 30%, co-investor 25% -> instructor $30, co-investor 25% of $70 = $17.50.
+  - A Partner linked to an INSTRUCTOR account never has a total share (`Partner.sharePercentBp` stays 0); its Partner row is created on demand to hold the entries and payouts.
+  - Percent and base are snapshotted on each entry, like the co-investor share. Instructor earnings page lists the current share per course.
 
 ### 16.3 Instructors manage the final test
 - An instructor assigned to a course (`CourseInstructor`) can set pass %, time limit and attempts, and create/edit/delete/reorder questions and options of that course's final test: `/instructor/courses/:id/quiz`, `/instructor/quiz/:quizId/questions`, `/instructor/questions/:id`, `/instructor/quiz/:quizId/questions/order` (same router as `/admin`).

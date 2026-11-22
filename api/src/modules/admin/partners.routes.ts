@@ -2,7 +2,9 @@
 // or an instructor with a revenue share (userId = an INSTRUCTOR account).
 //   GET    /admin/partners
 //   POST   /admin/partners                 { name, contact?, websiteUrl?, showLogo?, logoOrder?, logoUrl?, userId?, sharePercentBp? }
-//          sharePercentBp = share of TOTAL revenue (all courses), basis points. Sum over all partners <= 10000.
+//          sharePercentBp = co-investor share (basis points) of each sale AFTER that course's instructor shares.
+//          Sum over all partners <= 10000. Must be 0 for a partner linked to an INSTRUCTOR account
+//          (instructors are paid per course: PATCH /admin/courses/:id/instructors/:userId).
 //          A new percent only applies to orders paid after the change (entries keep their snapshot).
 //   PATCH  /admin/partners/:id
 //   POST   /admin/partners/:id/logo        { file }  (public image)
@@ -56,6 +58,15 @@ async function checkLinkUser(userId: string | null | undefined, partnerId?: stri
   if (u.partnerLink && u.partnerLink.id !== partnerId) throw new AppError('VALIDATION_FAILED', 409, 'This account is already linked to another partner');
 }
 
+/** Instructors get a share per course, never a share of all sales. */
+async function checkNoInstructorShare(userId: string | null | undefined, sharePercentBp: number | undefined) {
+  if (!userId || !sharePercentBp) return;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (u?.role === 'INSTRUCTOR') {
+    throw new AppError('VALIDATION_FAILED', 400, "An instructor's share is set per course, in the course's Instructors tab");
+  }
+}
+
 async function listPartners() {
   const [rows, unpaid] = await Promise.all([
     prisma.partner.findMany({
@@ -80,6 +91,7 @@ partnersAdminRouter.post(
   h(async (req, res) => {
     const input = body(req, fields);
     await checkLinkUser(input.userId);
+    await checkNoInstructorShare(input.userId, input.sharePercentBp);
     const p = await prisma.$transaction(async (tx) => {
       await checkTotalShare(tx, input.sharePercentBp);
       const created = await tx.partner.create({ data: input });
@@ -106,7 +118,12 @@ partnersAdminRouter.patch(
     const input = body(req, fields.partial());
     await checkLinkUser(input.userId, req.params.id);
     const p = await prisma.$transaction(async (tx) => {
-      if (!(await tx.partner.findUnique({ where: { id: req.params.id } }))) throw new AppError('NOT_FOUND', 404);
+      const current = await tx.partner.findUnique({ where: { id: req.params.id } });
+      if (!current) throw new AppError('NOT_FOUND', 404);
+      await checkNoInstructorShare(
+        input.userId !== undefined ? input.userId : current.userId,
+        input.sharePercentBp ?? current.sharePercentBp,
+      );
       await checkTotalShare(tx, input.sharePercentBp, req.params.id);
       const updated = await tx.partner.update({ where: { id: req.params.id }, data: input });
       await writeAudit(req.user!.id, 'partner.update', 'Partner', updated.id, input, tx);

@@ -12,7 +12,7 @@ export interface RevenueFilter {
 export interface PartnerSummary {
   partner: { id: string; name: string; logoUrl: string | null };
   totals: RevenueTotals;
-  /** Current share of total revenue (all courses), basis points. Old entries keep the percent used at payment time. */
+  /** Current share of each sale after instructor shares, basis points. Old entries keep the percent used at payment time. */
   sharePercentBp: number;
   /** Courses this partner's entries come from (for the filter). */
   courses: { id: string; title: string; slug: string }[];
