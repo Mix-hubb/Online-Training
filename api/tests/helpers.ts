@@ -5,12 +5,14 @@ import type { Role } from '@prisma/client';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/db.js';
 import { signSession, SESSION_COOKIE } from '../src/middleware/auth.js';
+import { resetRateLimits } from '../src/lib/rate-limit.js';
 
 export const app = createApp();
 export { prisma };
 export const PASSWORD = 'Test-pass-123';
 
 export async function resetDb() {
+  resetRateLimits();
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
   await prisma.$executeRawUnsafe(`TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`);

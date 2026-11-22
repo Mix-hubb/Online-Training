@@ -9,6 +9,11 @@
 //   GET  /auth/me
 //   POST /auth/logout
 //   POST /auth/change-password     { currentPassword, newPassword }  (clears mustChangePassword)
+// Email (Resend, src/mail.ts): verify link (24 h), reset link (1 h, single use), "password changed" notice.
+// Rate limits (in memory, lib/rate-limit.ts), 429 TOO_MANY_REQUESTS:
+//   login: 10 failed tries per email and 50 per IP in 15 min
+//   register: 10 per IP per hour; forgot-password / resend-verification: 20 per IP per hour
+//   and at most 3 mails per email address in 15 min (extra requests answer 200 but send nothing)
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
@@ -20,13 +25,24 @@ import { h } from '../../lib/async.js';
 import { AppError } from '../../lib/errors.js';
 import { body, email, password } from '../../lib/validate.js';
 import { randomToken, sha256 } from '../../lib/tokens.js';
-import { sendMail, verifyEmailMail, resetPasswordMail } from '../../mail.js';
+import { sendMailSafe, verifyEmailMail, resetPasswordMail, passwordChangedMail } from '../../mail.js';
+import { clear, hit, isLimited } from '../../lib/rate-limit.js';
 import { requireAuth, setSessionCookie, clearSessionCookie } from '../../middleware/auth.js';
 
 export const authRouter = Router();
 
 const VERIFY_TTL_MS = 24 * 3600 * 1000;
 const RESET_TTL_MS = 3600 * 1000;
+const MIN15 = 15 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+
+const tooMany = () => new AppError('TOO_MANY_REQUESTS', 429, 'Too many attempts. Please wait a few minutes and try again.');
+/** Per-IP limit: throws 429. */
+function limitIp(name: string, ip: string | undefined, limit: number, windowMs: number) {
+  if (!hit(`${name}:ip:${ip ?? '?'}`, limit, windowMs)) throw tooMany();
+}
+/** Per-address mail limit: false means "do not send", the response stays the same (no account enumeration). */
+const mailAllowed = (to: string) => hit(`mail:${to}`, 3, MIN15);
 
 export async function toMe(user: User) {
   const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true, name: true } });
@@ -65,22 +81,27 @@ async function useToken(token: string, type: 'VERIFY' | 'RESET') {
   return row;
 }
 
+/** New verify link; older unused verify links stop working. Returns false when the mail could not be sent. */
 async function sendVerify(user: User) {
+  await prisma.authToken.updateMany({ where: { userId: user.id, type: 'VERIFY', usedAt: null }, data: { usedAt: new Date() } });
   const token = await issueToken(user.id, 'VERIFY');
-  await sendMail(verifyEmailMail(user.email, `${config.WEB_URL}/verify-email?token=${token}`));
+  return sendMailSafe(verifyEmailMail(user.email, `${config.WEB_URL}/verify-email?token=${token}`));
 }
 
 authRouter.post(
   '/register',
   h(async (req, res) => {
+    limitIp('register', req.ip, 10, HOUR);
     const input = body(req, z.object({ name: z.string().trim().min(1).max(100), email, password }));
     const existing = await prisma.user.findUnique({ where: { email: input.email } });
     if (existing) throw new AppError('VALIDATION_FAILED', 409, 'An account with this email already exists');
     const user = await prisma.user.create({
       data: { name: input.name, email: input.email, passwordHash: await bcrypt.hash(input.password, 10) },
     });
-    await sendVerify(user);
-    res.status(201).json({ ok: true, email: user.email });
+    mailAllowed(user.email);
+    // If the mail fails, the account still exists; the learner can use "Send the link again".
+    const mailSent = await sendVerify(user);
+    res.status(201).json({ ok: true, email: user.email, mailSent });
   }),
 );
 
@@ -99,9 +120,10 @@ authRouter.post(
 authRouter.post(
   '/resend-verification',
   h(async (req, res) => {
+    limitIp('resend', req.ip, 20, HOUR);
     const input = body(req, z.object({ email }));
     const user = await prisma.user.findUnique({ where: { email: input.email } });
-    if (user && !user.emailVerifiedAt && user.status === 'ACTIVE') await sendVerify(user);
+    if (user && !user.emailVerifiedAt && user.status === 'ACTIVE' && mailAllowed(user.email)) await sendVerify(user);
     res.json({ ok: true });
   }),
 );
@@ -110,9 +132,17 @@ authRouter.post(
   '/login',
   h(async (req, res) => {
     const input = body(req, z.object({ email, password: z.string().min(1).max(200) }));
+    const emailKey = `login:email:${input.email}`;
+    const ipKey = `login:ip:${req.ip ?? '?'}`;
+    if (isLimited(emailKey, 10) || isLimited(ipKey, 50)) throw tooMany();
     const user = await prisma.user.findUnique({ where: { email: input.email } });
     const ok = user?.passwordHash ? await bcrypt.compare(input.password, user.passwordHash) : false;
-    if (!user || !ok) throw new AppError('UNAUTHENTICATED', 401, 'Wrong email or password');
+    if (!user || !ok) {
+      hit(emailKey, 10, MIN15);
+      hit(ipKey, 50, MIN15);
+      throw new AppError('UNAUTHENTICATED', 401, 'Wrong email or password');
+    }
+    clear(emailKey);
     if (user.status === 'BANNED') throw new AppError('BANNED', 403);
     if (!user.emailVerifiedAt) throw new AppError('EMAIL_NOT_VERIFIED', 403);
     setSessionCookie(res, user.id);
@@ -155,11 +185,12 @@ authRouter.post(
 authRouter.post(
   '/forgot-password',
   h(async (req, res) => {
+    limitIp('forgot', req.ip, 20, HOUR);
     const input = body(req, z.object({ email }));
     const user = await prisma.user.findUnique({ where: { email: input.email } });
-    if (user && user.status === 'ACTIVE') {
+    if (user && user.status === 'ACTIVE' && mailAllowed(user.email)) {
       const token = await issueToken(user.id, 'RESET');
-      await sendMail(resetPasswordMail(user.email, `${config.WEB_URL}/reset-password?token=${token}`));
+      await sendMailSafe(resetPasswordMail(user.email, `${config.WEB_URL}/reset-password?token=${token}`));
     }
     res.json({ ok: true });
   }),
@@ -183,6 +214,8 @@ authRouter.post(
     });
     // Invalidate other open reset links.
     await prisma.authToken.updateMany({ where: { userId: user.id, type: 'RESET', usedAt: null }, data: { usedAt: new Date() } });
+    clear(`login:email:${user.email}`);
+    await sendMailSafe(passwordChangedMail(user.email));
     res.json({ ok: true });
   }),
 );
@@ -217,6 +250,8 @@ authRouter.post(
       where: { id: user.id },
       data: { passwordHash: await bcrypt.hash(input.newPassword, 10), mustChangePassword: false },
     });
+    // Not for the first change of an admin-issued temporary password: that one was never the user's own.
+    if (!user.mustChangePassword) await sendMailSafe(passwordChangedMail(updated.email));
     res.json({ user: await toMe(updated) });
   }),
 );

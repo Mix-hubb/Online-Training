@@ -25,6 +25,7 @@ export type ErrorCode =
   | 'SLIP_ALREADY_REVIEWED'
   | 'MUST_CHANGE_PASSWORD'
   | 'NOT_A_PARTNER'
+  | 'TOO_MANY_REQUESTS'
   | 'INTERNAL';
 
 export class AppError extends Error {
