@@ -140,26 +140,36 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 16px 32px;
   font-size: 14px;
 }
+/* Partner logos: no tile, grey at rest, real colors on hover or focus (same as the home page strip). */
 .flogo {
-  width: 120px;
-  height: var(--ot-control-h);
-  border: 1px solid var(--ot-border);
-  border-radius: var(--ot-radius-control);
-  background: var(--ot-surface);
+  height: 48px;
+  min-width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: var(--ot-faint);
+  border-radius: var(--ot-radius-control);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ot-on-navy-muted);
   text-decoration: none;
-  overflow: hidden;
+  filter: grayscale(1);
+  opacity: 0.7;
+  transition: filter var(--ot-transition), opacity var(--ot-transition), color var(--ot-transition);
+}
+.flogo:hover,
+.flogo:focus-visible {
+  filter: none;
+  opacity: 1;
+  color: var(--ot-on-navy);
 }
 .flogo img {
-  max-width: 104px;
-  max-height: 26px;
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 180px;
   object-fit: contain;
 }
 .footer-bottom {
