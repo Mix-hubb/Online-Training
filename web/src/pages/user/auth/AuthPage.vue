@@ -133,6 +133,10 @@ async function resend() {
             <v-btn type="submit" color="primary" block min-height="48" :loading="busy">{{ tab === 'login' ? 'Log in' : 'Create account' }}</v-btn>
           </v-form>
           <GoogleSignInButton @credential="google" />
+          <p v-if="tab === 'register'" class="agree">
+            By creating an account you agree to our <router-link to="/terms">Terms of Service</router-link> and
+            <router-link to="/privacy">Privacy Policy</router-link>.
+          </p>
         </section>
       </template>
     </div>
@@ -144,5 +148,15 @@ async function resend() {
   color: var(--ot-accent-strong);
   text-decoration: none;
   font-weight: 500;
+}
+.agree {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ot-muted);
+  text-align: center;
+}
+.agree a {
+  color: var(--ot-accent-strong);
 }
 </style>

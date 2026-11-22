@@ -36,6 +36,10 @@ export const userRoutes: RouteRecordRaw[] = [
   // Public certificate verification
   { path: '/certificates/:number?', name: 'certificate', component: () => import('@/pages/public/CertificatePage.vue') },
 
+  // Legal pages (footer links)
+  { path: '/terms', name: 'terms', component: () => import('@/pages/public/TermsPage.vue') },
+  { path: '/privacy', name: 'privacy', component: () => import('@/pages/public/PrivacyPage.vue') },
+
   // Error / empty states reachable by name
   { path: '/course-unavailable', name: 'course-unavailable', component: () => import('@/pages/errors/CourseUnavailablePage.vue') },
   { path: '/locked', name: 'locked', component: () => import('@/pages/errors/LockedPage.vue') },

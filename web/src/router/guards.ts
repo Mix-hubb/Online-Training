@@ -6,7 +6,7 @@
 import type { Router } from 'vue-router';
 import { homeFor, useAuthStore } from '@/stores/auth';
 
-const PUBLIC_FOR_PARTNER = new Set(['home', 'course', 'certificate', 'not-found', 'forbidden', 'login', 'register', 'forgot-password', 'reset-password', 'verify-email', 'course-unavailable']);
+const PUBLIC_FOR_PARTNER = new Set(['home', 'course', 'certificate', 'terms', 'privacy', 'not-found', 'forbidden', 'login', 'register', 'forgot-password', 'reset-password', 'verify-email', 'course-unavailable']);
 const GUEST_ONLY = new Set(['login', 'register']);
 
 export function installGuards(router: Router) {

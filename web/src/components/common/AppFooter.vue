@@ -51,6 +51,10 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
       </div>
       <div class="footer-bottom">
         <span>© 2026 Hidden Mines Co., Ltd. All rights reserved.</span>
+        <nav class="legal-links" aria-label="Legal">
+          <router-link to="/terms">Terms of Service</router-link>
+          <router-link to="/privacy">Privacy Policy</router-link>
+        </nav>
       </div>
     </div>
   </v-footer>
@@ -148,5 +152,21 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   padding-top: 20px;
   border-top: 1px solid var(--ot-border);
   font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.legal-links {
+  display: flex;
+  gap: 20px;
+}
+.legal-links a {
+  color: var(--ot-muted);
+  text-decoration: none;
+}
+.legal-links a:hover {
+  color: var(--ot-text);
+  text-decoration: underline;
 }
 </style>
