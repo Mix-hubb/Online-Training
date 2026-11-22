@@ -32,7 +32,7 @@ async function logout() {
 
 <template>
   <v-app-bar flat color="background" border="b" height="72">
-    <v-container class="d-flex align-center py-0" style="max-width: var(--ot-page-max); padding-inline: var(--ot-gutter)">
+    <v-container fluid class="bar d-flex align-center py-0">
       <v-app-bar-nav-icon v-if="!mdAndUp" aria-label="Open menu" @click="drawer = !drawer" />
       <router-link to="/" class="d-flex align-center text-decoration-none mr-6 brand-link" aria-label="Online Training home">
         <BrandMark class="mr-2" />
@@ -89,6 +89,18 @@ async function logout() {
 </template>
 
 <style scoped>
+/* Full width, same edges as the staff (admin) top bar: brand at the far left, account at the far right. */
+.bar {
+  max-width: none;
+  padding-left: 22px;
+  padding-right: 24px;
+}
+@media (max-width: 600px) {
+  .bar {
+    padding-left: 8px;
+    padding-right: 16px;
+  }
+}
 .brand-name {
   color: var(--ot-text);
   font-weight: 600;
