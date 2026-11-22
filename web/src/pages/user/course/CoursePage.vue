@@ -94,14 +94,13 @@ async function playIntro() {
   <div v-if="notFound" class="page"><EmptyState icon="mdi-book-off-outline" title="Course not found" text="It may have been removed or is not published yet." action-label="Browse courses" action-to="/" /></div>
   <div v-else-if="!course" class="page"><v-skeleton-loader type="heading, paragraph, image" color="surface" /></div>
   <div v-else class="page course">
-    <nav aria-label="Breadcrumb" class="crumbs">
-      <router-link to="/">Courses</router-link>
-      <template v-if="course.category"><span aria-hidden="true">/</span><router-link :to="{ path: '/', query: { category: course.category.slug } }">{{ course.category.name }}</router-link></template>
-      <span aria-hidden="true">/</span><span class="here">{{ course.title }}</span>
-    </nav>
-
     <div class="layout">
       <div class="main-col">
+        <nav aria-label="Breadcrumb" class="crumbs">
+          <router-link to="/">Courses</router-link>
+          <template v-if="course.category"><span aria-hidden="true">/</span><router-link :to="{ path: '/', query: { category: course.category.slug } }">{{ course.category.name }}</router-link></template>
+          <span aria-hidden="true">/</span><span class="here">{{ course.title }}</span>
+        </nav>
         <header class="d-flex flex-column ga-3">
           <div class="d-flex flex-wrap ga-2">
             <span v-if="course.category" class="tag accent">{{ course.category.name }}</span>
@@ -191,7 +190,7 @@ async function playIntro() {
           <div class="text-body-2 font-weight-medium">Payment method</div>
           <PaymentMethodPicker v-model="method" :options="course.paymentMethods" />
           <v-btn color="primary" block size="large" :loading="busy" :disabled="!method || preview" @click="buy">Buy this course</v-btn>
-          <span class="text-body-2 text-muted text-center">Card and PromptPay are processed by Stripe. You get access as soon as the payment is confirmed.</span>
+          <span class="fine text-muted text-center">Card and PromptPay are processed by Stripe. You get access as soon as the payment is confirmed.</span>
         </template>
 
         <div v-if="!isPartner && auth.user && enrolled" class="d-flex flex-column ga-2">
@@ -217,6 +216,8 @@ async function playIntro() {
 
 <style scoped>
 .course {
+  /* Use the full width: content starts at the page gutter, not in a centred column. */
+  max-width: none;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -245,11 +246,11 @@ async function playIntro() {
   align-items: flex-start;
 }
 .main-col {
-  flex: 999 1 600px;
+  flex: 999 1 480px;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 .title {
   margin: 0;
@@ -330,14 +331,21 @@ h2 {
   gap: 12px;
 }
 .buy {
-  flex: 1 1 320px;
-  max-width: 400px;
+  flex: 1 1 400px;
+  max-width: 460px;
   position: sticky;
   top: 96px;
-  padding: 24px;
+  /* Fits the screen; scrolls inside only on very short screens. */
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+.buy .fine {
+  font-size: var(--ot-fs-xs);
+  line-height: 1.5;
 }
 .price {
   font-size: 30px;
@@ -347,12 +355,12 @@ h2 {
 .perks {
   list-style: none;
   margin: 0;
-  padding: 18px 0 0;
+  padding: 14px 0 0;
   border-top: 1px solid var(--ot-border);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  font-size: var(--ot-fs-sm);
   color: var(--ot-text-2);
 }
 .perks li {
@@ -367,6 +375,8 @@ h2 {
   .buy {
     position: static;
     max-width: none;
+    max-height: none;
+    overflow: visible;
   }
   .title {
     font-size: 28px;

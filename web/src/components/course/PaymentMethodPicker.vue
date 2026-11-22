@@ -16,7 +16,7 @@ const hasBtc = computed(() => props.options.some((o) => o.method === 'btc'));
 </script>
 
 <template>
-  <div role="radiogroup" aria-label="Payment method" class="d-flex flex-column ga-2">
+  <div role="radiogroup" aria-label="Payment method" class="d-flex flex-column ga-1">
     <button
       v-for="o in items"
       :key="o.key"
@@ -28,7 +28,7 @@ const hasBtc = computed(() => props.options.some((o) => o.method === 'btc'));
       @click="model = o.key"
     >
       <span class="dot" aria-hidden="true" />
-      <span class="flex-grow-1 d-flex flex-column ga-1" style="min-width: 0">
+      <span class="flex-grow-1 d-flex flex-column" style="min-width: 0">
         <span class="label">{{ methodLabel[o.method] }} <span class="text-muted font-weight-regular">· {{ o.currency.toUpperCase() }}</span></span>
         <span class="note">{{ hint[o.method] }}</span>
       </span>
@@ -36,7 +36,7 @@ const hasBtc = computed(() => props.options.some((o) => o.method === 'btc'));
     </button>
     <div v-if="!hasBtc" class="method disabled" aria-disabled="true">
       <span class="dot" aria-hidden="true" />
-      <span class="flex-grow-1 d-flex flex-column ga-1">
+      <span class="flex-grow-1 d-flex flex-column">
         <span class="label text-muted">Bitcoin</span>
         <span class="note">Not available yet</span>
       </span>
@@ -52,8 +52,9 @@ const hasBtc = computed(() => props.options.some((o) => o.method === 'btc'));
   color: var(--ot-text);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  min-height: var(--ot-control-h);
+  padding: 9px 14px;
   border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-border);
   background: var(--ot-surface);
