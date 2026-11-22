@@ -18,6 +18,7 @@ const items = computed(() => [
   { to: '/admin/partners', title: 'Partners' },
   { to: '/admin/revenue', title: 'Revenue share' },
   { to: '/admin/landing', title: 'Landing page' },
+  { to: '/admin/reviews', title: 'Reviews' },
   { to: '/admin/taxonomy', title: 'Categories and tags' },
   { to: '/admin/users', title: 'Users' },
   { to: '/admin/certificate', title: 'Certificate template' },

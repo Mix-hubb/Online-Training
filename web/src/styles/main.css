@@ -31,6 +31,8 @@
   --ot-hl-tint: #fff4d6;
   --ot-hl-mark: #ffe3a3;
   --ot-hl-text: #7a4300;
+  /* Rating stars: darker amber so a filled star keeps >= 3:1 on white. */
+  --ot-star: #b97800;
   /* Color: navy band (footer, closing call to action). Dark blue, not black. */
   --ot-navy: #13243d;
   --ot-navy-2: #1b3253;

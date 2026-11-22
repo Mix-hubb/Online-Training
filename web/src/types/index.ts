@@ -64,6 +64,7 @@ export interface CourseDetail extends CourseCard {
   lessons: { id: string; order: number; title: string; description: string | null; durationSec: number }[];
   quiz: { questionCount: number; passPercent: number; timeLimitMin: number | null; maxAttempts: number } | null;
   paymentMethods: MethodOption[];
+  rating: { average: number | null; count: number };
   viewer: {
     enrolled: boolean;
     enrollmentStatus: 'IN_PROGRESS' | 'COMPLETED' | null;

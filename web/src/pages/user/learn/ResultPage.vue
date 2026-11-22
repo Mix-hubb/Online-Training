@@ -84,6 +84,7 @@ const heading = computed(() => {
           <template v-if="state === 'passed'">
             <v-btn v-if="cert" color="primary" min-height="48" :to="`/certificates/${cert.number}`">View certificate</v-btn>
             <v-btn v-if="cert" variant="outlined" min-height="48" prepend-icon="mdi-download" @click="certApi.downloadPdf(cert.id, cert.number)">Download PDF</v-btn>
+            <v-btn variant="outlined" min-height="48" prepend-icon="mdi-star-outline" :to="`/courses/${slug}#reviews`">Rate this course</v-btn>
             <v-btn variant="outlined" min-height="48" to="/profile">Back to my learning</v-btn>
           </template>
           <v-btn v-else-if="state === 'pending'" variant="outlined" min-height="48" :to="`/learn/${slug}`">Back to the course</v-btn>

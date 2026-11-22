@@ -20,5 +20,6 @@ export const adminRoutes: RouteRecordRaw[] = [
   { path: '/admin/support/:threadId?', name: 'admin-support', component: () => import('@/pages/admin/SupportInboxPage.vue'), meta },
   { path: '/admin/payments/review', name: 'admin-payment-review', component: () => import('@/pages/admin/PaymentReviewPage.vue'), meta },
   { path: '/admin/settings', name: 'admin-settings', component: () => import('@/pages/admin/SettingsPage.vue'), meta },
+  { path: '/admin/reviews', name: 'admin-reviews', component: () => import('@/pages/admin/ReviewsPage.vue'), meta },
   { path: '/admin/audit', name: 'admin-audit', component: () => import('@/pages/admin/AuditLogPage.vue'), meta },
 ];

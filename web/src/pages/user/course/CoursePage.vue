@@ -15,6 +15,8 @@ import { useAuthStore } from '@/stores/auth';
 import type { CourseDetail, Currency, PayMethod } from '@/types';
 import { duration, levelLabel, money, plural, priceLabel } from '@/utils/format';
 import CourseCover from '@/components/course/CourseCover.vue';
+import CourseReviews from '@/components/review/CourseReviews.vue';
+import StarRating from '@/components/review/StarRating.vue';
 
 const props = defineProps<{ slug?: string; preview?: boolean }>();
 const route = useRoute();
@@ -84,6 +86,11 @@ async function buy() {
   }
 }
 
+async function refreshRating() {
+  const c = await catalog.getCourse(course.value!.slug);
+  course.value!.rating = c.rating;
+}
+
 async function playIntro() {
   if (!introUrl.value) introUrl.value = (await catalog.introVideo(course.value!.slug)).url;
   introOpen.value = true;
@@ -109,7 +116,12 @@ async function playIntro() {
           </div>
           <h1 class="title">{{ course.title }}</h1>
           <p class="summary">{{ course.summary }}</p>
-          <div class="text-body-2 text-muted d-flex flex-wrap ga-4">
+          <div class="text-body-2 text-muted d-flex flex-wrap align-center ga-4">
+            <a v-if="course.rating.count" href="#reviews" class="rating-link">
+              <strong>{{ course.rating.average?.toFixed(1) }}</strong>
+              <StarRating :value="course.rating.average" :size="15" />
+              <span>({{ plural(course.rating.count, 'review') }})</span>
+            </a>
             <span><v-icon icon="mdi-play-circle-outline" size="16" /> {{ plural(course.lessonCount, 'lesson') }}</span>
             <span><v-icon icon="mdi-clock-outline" size="16" /> {{ duration(course.durationSec) }}</span>
             <span v-if="course.quiz"><v-icon icon="mdi-checkbox-marked-outline" size="16" /> Final test + certificate</span>
@@ -157,6 +169,15 @@ async function playIntro() {
           </div>
           <p class="text-body-2 text-muted mb-0">Pass to get your certificate. If you use all attempts without passing, you restart the course lessons. Your purchase stays.</p>
         </section>
+
+        <CourseReviews
+          :slug="course.slug"
+          :course-id="course.id"
+          :signed-in="!!auth.user"
+          :enrollment-status="course.viewer?.enrollmentStatus ?? null"
+          :preview="preview"
+          @changed="refreshRating"
+        />
       </div>
 
       <aside class="buy panel" aria-label="Purchase">
@@ -324,6 +345,20 @@ h2 {
   gap: 14px 28px;
   font-size: 14px;
   line-height: 1.5;
+}
+.rating-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--ot-text-2);
+  text-decoration: none;
+}
+.rating-link strong {
+  color: var(--ot-text);
+}
+.rating-link:hover span {
+  text-decoration: underline;
 }
 .facts {
   display: grid;
