@@ -62,9 +62,20 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
 
 <style scoped>
 .site-footer {
-  background: var(--ot-raised) !important;
-  border-top: 1px solid var(--ot-border);
-  color: var(--ot-muted);
+  position: relative;
+  background: var(--ot-navy) !important;
+  color: var(--ot-on-navy-muted);
+}
+/* Thin blue-to-amber line on top */
+.site-footer::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ot-accent) 0%, var(--ot-topic-2-fg) 50%, var(--ot-hl) 100%);
+}
+.site-footer a:focus-visible {
+  outline-color: var(--ot-hl);
 }
 .footer-inner {
   max-width: var(--ot-page-max);
@@ -89,9 +100,10 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   max-width: 340px;
 }
 .brand {
-  color: var(--ot-text);
-  font-weight: 600;
-  font-size: 17px;
+  color: var(--ot-surface);
+  font-family: var(--ot-font-display);
+  font-weight: 700;
+  font-size: 18px;
 }
 .col-links {
   flex: 0 1 160px;
@@ -107,21 +119,24 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   line-height: 1.5;
 }
 .col-title {
-  color: var(--ot-text);
+  color: var(--ot-surface);
+  font-family: var(--ot-font-display);
   font-weight: 600;
   margin-bottom: 4px;
 }
 .col-links a {
-  color: var(--ot-muted);
+  color: var(--ot-on-navy-muted);
   text-decoration: none;
+  transition: color var(--ot-transition);
 }
 .col-links a:hover {
-  color: var(--ot-text);
+  color: var(--ot-surface);
+  text-decoration: underline;
 }
 .footer-partners {
   margin-top: 36px;
   padding-top: 20px;
-  border-top: 1px solid var(--ot-border);
+  border-top: 1px solid var(--ot-navy-2);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -148,9 +163,9 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   object-fit: contain;
 }
 .footer-bottom {
-  margin-top: 20px;
+  margin-top: 32px;
   padding-top: 20px;
-  border-top: 1px solid var(--ot-border);
+  border-top: 1px solid var(--ot-navy-2);
   font-size: 13px;
   display: flex;
   flex-wrap: wrap;
@@ -162,11 +177,11 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   gap: 20px;
 }
 .legal-links a {
-  color: var(--ot-muted);
+  color: var(--ot-on-navy-muted);
   text-decoration: none;
 }
 .legal-links a:hover {
-  color: var(--ot-text);
+  color: var(--ot-surface);
   text-decoration: underline;
 }
 </style>

@@ -5,6 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import HeroBanner from '@/components/course/HeroBanner.vue';
 import CourseCard from '@/components/course/CourseCard.vue';
+import CourseCover from '@/components/course/CourseCover.vue';
 import CourseFilters from '@/components/course/CourseFilters.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import PartnerLogos from '@/components/common/PartnerLogos.vue';
@@ -79,6 +80,11 @@ function goPage(n: number) {
   filters.value = { ...filters.value, page: n };
   document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+const steps = [
+  { icon: 'mdi-magnify', title: 'Pick a course', text: 'Free or paid. Pay once by card, PromptPay, bank transfer or Bitcoin.' },
+  { icon: 'mdi-play-circle-outline', title: 'Watch the lessons', text: 'Short video lessons in order. Each one opens after you watch the one before.' },
+  { icon: 'mdi-certificate-outline', title: 'Pass the test', text: 'Finish with a final test and get a certificate anyone can verify online.' },
+];
 function clear() {
   filters.value = { q: '', category: '', level: '', price: '', tag: '', page: 1 };
 }
@@ -91,7 +97,10 @@ function clear() {
     <PartnerLogos v-if="landing?.partners.length && landing.sections.partners?.isVisible !== false" :partners="landing.partners" />
 
     <section v-if="learner && cont.length" aria-labelledby="continue-h" class="d-flex flex-column ga-4">
-      <h2 id="continue-h" class="h2">Continue learning</h2>
+      <div class="d-flex flex-column ga-1">
+        <span class="eyebrow">Pick up where you left off</span>
+        <h2 id="continue-h" class="h2">Continue learning</h2>
+      </div>
       <div class="row-wrap two">
         <router-link
           v-for="c in cont.slice(0, 4)"
@@ -99,7 +108,7 @@ function clear() {
           :to="`/learn/${c.course.slug}${c.lastLesson ? `?lesson=${c.lastLesson.id}` : ''}`"
           class="resume panel"
         >
-          <span class="resume-thumb"><img v-if="c.course.thumbnailUrl" :src="c.course.thumbnailUrl" alt="" /></span>
+          <span class="resume-thumb"><CourseCover :image-url="c.course.thumbnailUrl" :title="c.course.title" size="sm" /></span>
           <span class="flex-grow-1 d-flex flex-column ga-2" style="min-width: 0">
             <span class="resume-title">{{ c.course.title }}</span>
             <span class="text-body-2 text-muted">Next: {{ nextLabel(c) }}</span>
@@ -115,7 +124,10 @@ function clear() {
 
     <section id="catalog" aria-labelledby="catalog-h" class="d-flex flex-column ga-5">
       <div class="sec-head">
-        <h2 id="catalog-h" class="big">All courses</h2>
+        <div class="d-flex flex-column ga-1">
+          <span class="eyebrow">Course catalog</span>
+          <h2 id="catalog-h" class="big">All courses</h2>
+        </div>
         <span v-if="result" class="text-body-2 text-muted">Showing {{ result.items.length }} of {{ result.total }} {{ result.total === 1 ? 'course' : 'courses' }}</span>
       </div>
       <CourseFilters v-model="filters" :categories="categories" :tags="tags" />
@@ -129,12 +141,41 @@ function clear() {
       </EmptyState>
       <template v-else-if="result">
         <div class="grid">
-          <CourseCard v-for="c in result.items" :key="c.id" :course="c" :cta="cardCta(c)" />
+          <CourseCard v-for="(c, k) in result.items" :key="c.id" v-reveal="(k % 3) * 60" :course="c" :cta="cardCta(c)" />
         </div>
         <nav v-if="result.pages > 1" aria-label="Pagination" class="pager">
           <button v-for="n in result.pages" :key="n" type="button" :class="{ on: n === (filters.page ?? 1) }" :aria-current="n === (filters.page ?? 1) ? 'page' : undefined" :aria-label="`Page ${n}`" @click="goPage(n)">{{ n }}</button>
         </nav>
       </template>
+    </section>
+
+    <section v-reveal class="how" aria-labelledby="how-h">
+      <div class="how-head">
+        <span class="eyebrow">How it works</span>
+        <h2 id="how-h" class="big">From first lesson to certificate</h2>
+      </div>
+      <ol class="steps">
+        <li v-for="(s, k) in steps" :key="s.title" class="step">
+          <span class="step-num" aria-hidden="true">{{ k + 1 }}</span>
+          <span class="icon-tile" :class="{ hl: k === 2 }"><v-icon :icon="s.icon" /></span>
+          <h3>{{ s.title }}</h3>
+          <p>{{ s.text }}</p>
+        </li>
+      </ol>
+    </section>
+
+    <section v-if="!auth.user || learner" v-reveal class="cta-band" aria-labelledby="cta-h">
+      <div>
+        <h2 id="cta-h">{{ auth.user ? 'Ready for the next lesson?' : 'Start with a free course today' }}</h2>
+        <p>{{ auth.user ? 'Your progress is saved. Carry on from where you stopped.' : 'Create a free account in a minute. Pay only for the paid courses you choose.' }}</p>
+      </div>
+      <div class="d-flex flex-wrap ga-3">
+        <router-link v-if="auth.user" to="/profile" class="band-btn primary">Go to My learning</router-link>
+        <template v-else>
+          <router-link to="/register" class="band-btn primary">Create free account</router-link>
+          <router-link :to="{ path: '/', query: { price: 'free' } }" class="band-btn">See free courses</router-link>
+        </template>
+      </div>
     </section>
   </div>
 </template>
@@ -152,16 +193,146 @@ function clear() {
   justify-content: space-between;
   gap: 12px;
 }
+.sec-head {
+  align-items: flex-end;
+}
 .sec-head h2,
 .h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-}
-.sec-head h2.big {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
+}
+.big {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+/* How it works */
+.how {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 40px;
+  border-radius: var(--ot-radius-card);
+  border: 1px solid var(--ot-border);
+  background: var(--ot-wash-band);
+}
+.how-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  counter-reset: step;
+}
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  border-radius: var(--ot-radius-card);
+  background: var(--ot-surface);
+  border: 1px solid var(--ot-border);
+  box-shadow: var(--ot-shadow-card);
+}
+.step-num {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-family: var(--ot-font-display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ot-accent-tint);
+}
+.step h3 {
+  margin: 6px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+.step p {
+  margin: 0;
+  font-size: var(--ot-fs-base);
+  line-height: 1.6;
+  color: var(--ot-muted);
+}
+/* Closing call to action on navy */
+.cta-band {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 40px 48px;
+  border-radius: var(--ot-radius-card);
+  background: var(--ot-navy);
+  color: var(--ot-on-navy);
+}
+.cta-band::after {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -120px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 184, 61, 0.28) 0%, transparent 65%);
+  pointer-events: none;
+}
+.cta-band > * {
+  position: relative;
+  z-index: 1;
+}
+.cta-band h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 800;
   letter-spacing: -0.01em;
+  color: var(--ot-surface);
+}
+.cta-band p {
+  margin: 0;
+  max-width: 560px;
+  color: var(--ot-on-navy-muted);
+}
+.band-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: var(--ot-radius-control);
+  border: 1px solid var(--ot-on-navy-muted);
+  color: var(--ot-surface);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--ot-transition), transform var(--ot-transition);
+}
+.band-btn:hover {
+  background: var(--ot-navy-2);
+  transform: translateY(-1px);
+}
+.band-btn.primary {
+  border-color: var(--ot-hl);
+  background: var(--ot-hl);
+  color: var(--ot-navy);
+}
+.band-btn.primary:hover {
+  background: #ffc85c;
+}
+.band-btn:focus-visible {
+  outline: 2px solid var(--ot-hl);
+  outline-offset: 2px;
 }
 .row-wrap.two {
   grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
@@ -175,6 +346,7 @@ function clear() {
 .resume-thumb {
   width: 120px;
   height: 72px;
+  border: 1px solid var(--ot-border);
 }
 .resume-thumb img {
   width: 100%;
@@ -209,7 +381,7 @@ function clear() {
 .bar > span {
   display: block;
   height: 6px;
-  background: var(--ot-accent);
+  background: linear-gradient(90deg, var(--ot-accent) 0%, var(--ot-topic-2-fg) 100%);
 }
 .resume-cta {
   flex: none;
@@ -222,8 +394,8 @@ function clear() {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
   margin-top: 4px;
 }
 .pager {
@@ -266,6 +438,15 @@ function clear() {
   }
   .grid {
     grid-template-columns: 1fr;
+  }
+  .how {
+    padding: 24px 16px;
+  }
+  .cta-band {
+    padding: 28px 20px;
+  }
+  .big {
+    font-size: 24px;
   }
 }
 </style>

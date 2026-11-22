@@ -12,6 +12,15 @@ const cur = computed(() => props.banners[i.value] ?? null);
 const many = computed(() => props.banners.length > 1);
 const featured = computed(() => cur.value?.linkUrl ?? null);
 const internal = computed(() => !!featured.value && featured.value.startsWith('/'));
+// The last word of the headline gets the highlighter mark.
+const title = computed(() => props.texts.title || 'Learn practical skills, step by step');
+const head = computed(() => title.value.replace(/\s*\S+$/, ''));
+const last = computed(() => title.value.match(/\S+$/)?.[0] ?? '');
+const perks = [
+  { icon: 'mdi-play-circle-outline', label: 'Video lessons' },
+  { icon: 'mdi-clipboard-check-outline', label: 'Final test' },
+  { icon: 'mdi-certificate-outline', label: 'Certificate' },
+];
 
 function go(d: number) {
   const n = props.banners.length;
@@ -30,14 +39,17 @@ onBeforeUnmount(() => clearInterval(timer));
 <template>
   <section aria-label="Featured banners" class="hero" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
     <div class="text">
-      <span class="kicker">{{ texts.kicker || 'New course' }}</span>
-      <h1>{{ texts.title || 'Learn practical skills, step by step' }}</h1>
+      <span class="kicker"><span class="kdot" aria-hidden="true" />{{ texts.kicker || 'New course' }}</span>
+      <h1>{{ head }} <span class="hl-mark">{{ last }}</span></h1>
       <p>{{ texts.subtitle || 'Video lessons, a final test and a certificate.' }}</p>
       <div class="d-flex flex-wrap ga-3 mt-1">
         <a href="#catalog" class="btn primary">Browse courses</a>
         <router-link v-if="internal" :to="featured!" class="btn">View featured course</router-link>
         <a v-else-if="featured" :href="featured" class="btn">View featured course</a>
       </div>
+      <ul class="perks" aria-label="Every course includes">
+        <li v-for="p in perks" :key="p.label"><v-icon :icon="p.icon" size="18" />{{ p.label }}</li>
+      </ul>
     </div>
     <div class="art">
       <Transition name="fade" mode="out-in">
@@ -65,16 +77,27 @@ onBeforeUnmount(() => clearInterval(timer));
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  min-height: 340px;
+  min-height: 380px;
   border: 1px solid var(--ot-border);
   border-radius: var(--ot-radius-card);
   overflow: hidden;
-  background: var(--ot-accent-tint);
+  background: var(--ot-wash-hero);
   box-shadow: var(--ot-shadow-card);
 }
+/* Dot grid behind the text, fading to the right */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--ot-accent) 22%, transparent) 1px, transparent 1.4px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(100deg, #000 0%, transparent 55%);
+  pointer-events: none;
+}
 .text {
+  position: relative;
   flex: 1 1 420px;
-  padding: 48px 48px 80px;
+  padding: 56px 48px 88px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -82,22 +105,54 @@ onBeforeUnmount(() => clearInterval(timer));
 }
 .kicker {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ot-accent);
+  color: var(--ot-accent-strong);
+  background: var(--ot-surface);
   border: 1px solid var(--ot-info-border);
-  border-radius: var(--ot-radius-pill);
-  padding: 4px 10px;
+  border-radius: 999px;
+  padding: 5px 12px 5px 10px;
+  box-shadow: var(--ot-shadow-btn);
+}
+.kdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ot-hl);
+  box-shadow: 0 0 0 3px var(--ot-hl-tint);
 }
 h1 {
   margin: 0;
-  font-size: 40px;
-  line-height: 1.15;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.025em;
   color: var(--ot-text);
+  max-width: 620px;
+}
+.perks {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: var(--ot-fs-sm);
+  font-weight: 500;
+  color: var(--ot-text-2);
+}
+.perks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.perks :deep(.v-icon) {
+  color: var(--ot-accent);
 }
 p {
   margin: 0;
@@ -109,7 +164,9 @@ p {
 .btn {
   display: inline-flex;
   align-items: center;
-  padding: 13px 22px;
+  min-height: 48px;
+  padding: 0 22px;
+  transition: background var(--ot-transition), box-shadow var(--ot-transition), transform var(--ot-transition);
   border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
@@ -119,9 +176,13 @@ p {
   text-decoration: none;
   box-shadow: var(--ot-shadow-btn);
 }
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--ot-shadow-hover);
+}
 .btn.primary {
-  border-color: var(--ot-accent);
-  background: var(--ot-accent);
+  border-color: var(--ot-accent-strong);
+  background: var(--ot-accent-grad);
   color: var(--ot-surface);
   font-weight: 600;
   box-shadow: var(--ot-shadow-btn-primary);
@@ -139,7 +200,7 @@ p {
   flex: 1 1 380px;
   min-height: 260px;
   position: relative;
-  background: repeating-linear-gradient(135deg, var(--ot-deep) 0, var(--ot-deep) 14px, var(--ot-thumb) 14px, var(--ot-thumb) 28px);
+  background: var(--ot-thumb);
 }
 .art img {
   position: absolute;
@@ -218,7 +279,7 @@ p {
     padding: 28px 20px 24px;
   }
   h1 {
-    font-size: 30px;
+    font-size: 32px;
   }
   .art {
     min-height: 180px;
