@@ -55,11 +55,11 @@ const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
   color: var(--ot-text);
 }
 .exit {
-  height: 36px;
+  min-height: var(--ot-control-h);
   padding: 0 14px;
   display: inline-flex;
   align-items: center;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);

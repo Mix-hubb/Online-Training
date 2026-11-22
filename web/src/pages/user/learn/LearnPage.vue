@@ -176,12 +176,18 @@ onMounted(async () => {
   gap: 14px;
 }
 .back {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--ot-control-h);
+  font-size: var(--ot-fs-sm);
   color: var(--ot-muted);
   text-decoration: none;
+  transition: color var(--ot-transition);
 }
 .back:hover {
   color: var(--ot-text);
+  text-decoration: underline;
 }
 .lesson-title {
   margin: 0;
@@ -194,13 +200,13 @@ onMounted(async () => {
 .bar {
   flex: 1;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-border);
   overflow: hidden;
 }
 .bar.lg {
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
 }
 .bar > span {
   display: block;
@@ -227,7 +233,7 @@ onMounted(async () => {
   box-shadow: var(--ot-shadow-card);
 }
 .player {
-  background: #0f1a26;
+  background: var(--ot-video-bg);
   aspect-ratio: 16 / 9;
   max-height: calc(100vh - 220px);
   display: flex;
@@ -241,7 +247,7 @@ onMounted(async () => {
 .msg {
   width: 100%;
   height: 100%;
-  color: #dcebfa;
+  color: var(--ot-video-text);
 }
 .player-bar {
   background: var(--ot-deep);

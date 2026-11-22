@@ -233,7 +233,7 @@ async function doDelete() {
   gap: 10px;
   padding: 8px 10px;
   border: 1px solid var(--ot-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-surface);
   cursor: grab;
 }
@@ -257,21 +257,21 @@ async function doDelete() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-accent-tint);
   color: var(--ot-accent-strong);
   font-size: 12px;
   font-weight: 600;
 }
 .icon-btn {
-  width: 36px;
-  height: 36px;
+  width: var(--ot-control-h);
+  height: var(--ot-control-h);
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--ot-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-surface);
   color: var(--ot-muted);
   cursor: pointer;
@@ -300,7 +300,7 @@ async function doDelete() {
   width: 64px;
   height: 40px;
   flex: none;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-thumb);
   overflow: hidden;
 }

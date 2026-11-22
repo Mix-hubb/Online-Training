@@ -161,7 +161,7 @@ function setField(s: api.Section, k: string, v: string) {
   align-items: flex-start;
   padding: 16px;
   border: 1px dashed var(--ot-input-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-bg);
 }
 .rows {
@@ -182,26 +182,33 @@ function setField(s: api.Section, k: string, v: string) {
 }
 .order {
   display: flex;
-  flex-direction: column;
+  flex: none;
 }
+/* Move up / down: side by side, each a 44px target. */
 .arrow {
-  width: 24px;
-  height: 18px;
+  width: var(--ot-control-h);
+  height: var(--ot-control-h);
   border: 0;
+  border-radius: var(--ot-radius-control);
   background: none;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ot-muted);
+  transition: background var(--ot-transition), color var(--ot-transition);
+}
+.arrow:hover:not(:disabled) {
+  background: var(--ot-accent-hover);
+  color: var(--ot-accent-strong);
 }
 .arrow:disabled {
-  opacity: 0.3;
-  cursor: default;
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .thumb {
   width: 128px;
   height: 40px;
   flex: none;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-thumb);
   overflow: hidden;
 }

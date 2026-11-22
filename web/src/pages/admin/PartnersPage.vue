@@ -228,10 +228,10 @@ async function copy() {
 <style scoped>
 .logo {
   width: 88px;
-  height: 40px;
+  height: var(--ot-control-h);
   flex: none;
   border: 1px dashed var(--ot-input-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-raised);
   display: flex;
   align-items: center;

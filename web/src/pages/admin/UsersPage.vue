@@ -170,7 +170,7 @@ const roleLabel: Record<string, string> = { USER: 'Learner', INSTRUCTOR: 'Instru
   gap: 2px;
   padding: 10px 12px;
   border: 1px solid var(--ot-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-raised);
   font-size: 14px;
 }

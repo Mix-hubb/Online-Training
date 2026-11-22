@@ -168,7 +168,7 @@ function clear() {
 }
 .resume-thumb {
   flex: none;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-thumb);
   overflow: hidden;
 }
@@ -202,7 +202,7 @@ function clear() {
 .bar {
   flex: 1;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-border);
   overflow: hidden;
 }
@@ -218,7 +218,7 @@ function clear() {
   font-size: 14px;
   font-weight: 600;
   padding: 10px 16px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
 }
 .grid {
   display: grid;
@@ -237,7 +237,7 @@ function clear() {
   min-width: 44px;
   height: 44px;
   padding: 0 10px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-border);
   background: var(--ot-surface);
   color: var(--ot-muted);

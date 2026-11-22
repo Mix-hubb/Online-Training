@@ -279,7 +279,7 @@ function essay(text: string) {
   font-size: 13px;
   color: var(--ot-text-2);
   border: 1px solid var(--ot-input-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   padding: 8px 12px;
 }
 .timer {
@@ -291,7 +291,7 @@ function essay(text: string) {
   background: var(--ot-accent-tint);
   border: 1px solid var(--ot-info-border);
   color: var(--ot-text);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   padding: 8px 14px;
 }
 .timer .v-icon {
@@ -343,7 +343,7 @@ function essay(text: string) {
   text-align: left;
   width: 100%;
   padding: 14px 16px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: transparent;
   color: var(--ot-text);
@@ -354,8 +354,8 @@ function essay(text: string) {
   flex: none;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
-  border: 2px solid #4a586a;
+  border-radius: var(--ot-radius-control);
+  border: 2px solid var(--ot-text-2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -363,7 +363,7 @@ function essay(text: string) {
 .opt .ring span {
   width: 10px;
   height: 10px;
-  border-radius: 5px;
+  border-radius: var(--ot-radius-card);
 }
 .opt.on {
   border-color: var(--ot-accent);
@@ -383,7 +383,7 @@ function essay(text: string) {
 .essay {
   width: 100%;
   padding: 14px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);
@@ -408,7 +408,7 @@ function essay(text: string) {
 }
 .nbtn {
   height: 44px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: transparent;
   color: var(--ot-muted);
@@ -429,16 +429,23 @@ function essay(text: string) {
 .key {
   width: 14px;
   height: 14px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
 }
 .intro {
   max-width: 860px;
 }
 .back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--ot-control-h);
   color: var(--ot-accent-strong);
   text-decoration: none;
-  font-size: 14px;
+  font-size: var(--ot-fs-base);
+}
+.back:hover {
+  text-decoration: underline;
 }
 .facts {
   display: grid;

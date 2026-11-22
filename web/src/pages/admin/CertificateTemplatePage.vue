@@ -74,15 +74,15 @@ async function save() {
   width: 100%;
   height: 520px;
   border: 1px solid var(--ot-border);
-  border-radius: 4px;
-  background: #fff;
+  border-radius: var(--ot-radius-control);
+  background: var(--ot-surface);
 }
 .swatch {
   width: 44px;
-  height: 36px;
+  height: var(--ot-control-h);
   padding: 2px;
   border: 1px solid var(--ot-input-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-surface);
   cursor: pointer;
 }

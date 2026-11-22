@@ -185,7 +185,7 @@ const action: Record<LearningStatus, string> = {
   box-shadow: var(--ot-shadow-btn);
 }
 .seg button {
-  min-height: 40px;
+  min-height: var(--ot-control-h);
   padding: 0 16px;
   font-size: 14px;
   font-weight: 500;
@@ -213,7 +213,7 @@ const action: Record<LearningStatus, string> = {
   flex: none;
   width: 128px;
   height: 72px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-thumb);
   overflow: hidden;
 }
@@ -232,7 +232,7 @@ const action: Record<LearningStatus, string> = {
 .bar {
   flex: 1;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-border);
   overflow: hidden;
 }

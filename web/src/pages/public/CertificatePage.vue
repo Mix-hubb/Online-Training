@@ -154,7 +154,7 @@ function check() {
   border-radius: var(--ot-radius-card);
   border: 1px solid var(--ot-border);
   border-top: 4px solid var(--ot-accent);
-  background: #fbfcfe;
+  background: var(--ot-raised);
   padding: 40px 32px;
   display: flex;
   flex-direction: column;
@@ -228,7 +228,7 @@ function check() {
   flex: 1 1 220px;
   height: 46px;
   padding: 0 14px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-surface);
   color: var(--ot-text);

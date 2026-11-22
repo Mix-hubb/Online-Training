@@ -317,7 +317,7 @@ h2 {
   color: var(--ot-muted);
   background: rgba(255, 255, 255, 0.92);
   padding: 5px 10px;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
 }
 .outcomes {
   display: grid;

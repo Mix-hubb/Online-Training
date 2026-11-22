@@ -189,15 +189,15 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
   border-color: var(--ot-danger-border);
 }
 .drop {
-  border: 1px dashed #b5c2d1;
-  border-radius: 5px;
+  border: 1px dashed var(--ot-input-border);
+  border-radius: var(--ot-radius-card);
   padding: 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   text-align: center;
-  background: #f7fafd;
+  background: var(--ot-raised);
   cursor: pointer;
 }
 .drop.has {
@@ -213,7 +213,7 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
   font-size: 14px;
   font-weight: 600;
   border: 1px solid var(--ot-input-border);
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   padding: 10px 16px;
   background: var(--ot-surface);
   box-shadow: var(--ot-shadow-btn);
@@ -226,7 +226,7 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
   width: 64px;
   height: 64px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   display: block;
 }
 .summary {
@@ -242,7 +242,7 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
   width: 88px;
   height: 56px;
   flex: none;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   background: var(--ot-thumb);
   overflow: hidden;
 }

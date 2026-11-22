@@ -148,7 +148,7 @@ async function run(fn: () => Promise<unknown>) {
 .slip {
   flex: 1 1 240px;
   min-height: 360px;
-  border-radius: 4px;
+  border-radius: var(--ot-radius-control);
   border: 1px solid var(--ot-input-border);
   background: var(--ot-deep);
   overflow: hidden;

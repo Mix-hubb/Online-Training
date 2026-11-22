@@ -126,9 +126,19 @@ onMounted(async () => {
   overflow: hidden;
 }
 .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ot-control-h);
+  padding: 0 var(--ot-space-1);
+  margin-right: calc(-1 * var(--ot-space-1));
+  border-radius: var(--ot-radius-control);
   color: var(--ot-accent-strong);
   text-decoration: none;
-  font-weight: 400;
+  font-weight: 500;
+}
+.link:hover {
+  background: var(--ot-accent-hover);
+  text-decoration: underline;
 }
 .rows {
   list-style: none;

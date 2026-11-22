@@ -100,9 +100,18 @@ function dismiss() {
   gap: 24px;
 }
 .back {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--ot-control-h);
+  font-size: var(--ot-fs-sm);
   color: var(--ot-muted);
   text-decoration: none;
+  transition: color var(--ot-transition);
+}
+.back:hover {
+  color: var(--ot-text);
+  text-decoration: underline;
 }
 .table-wrap {
   overflow-x: auto;

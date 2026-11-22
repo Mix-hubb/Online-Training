@@ -87,7 +87,7 @@ const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
   width: 64px;
   height: 40px;
   flex: none;
-  border-radius: 3px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-thumb);
   overflow: hidden;
 }

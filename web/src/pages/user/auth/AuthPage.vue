@@ -145,9 +145,15 @@ async function resend() {
 
 <style scoped>
 .forgot {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ot-control-h);
   color: var(--ot-accent-strong);
   text-decoration: none;
   font-weight: 500;
+}
+.forgot:hover {
+  text-decoration: underline;
 }
 .agree {
   margin: 16px 0 0;
