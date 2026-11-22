@@ -17,7 +17,6 @@ const enrolled = computed(() => props.cta === 'Enrolled');
     <router-link :to="`/courses/${course.slug}`" class="course-card panel">
       <div class="thumb">
         <CourseCover :image-url="course.thumbnailUrl" :topic="course.category?.name" :title="course.title" />
-        <span v-if="course.isFree" class="ribbon">Free course</span>
       </div>
       <div class="body">
         <span v-if="course.category" class="topic" :style="{ background: `var(--ot-topic-${tone}-bg)`, color: `var(--ot-topic-${tone}-fg)` }">{{ course.category.name }}</span>
@@ -68,19 +67,6 @@ const enrolled = computed(() => props.cta === 'Enrolled');
   position: relative;
   height: 168px;
   border-bottom: 1px solid var(--ot-border);
-}
-.ribbon {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 3px 10px;
-  border-radius: var(--ot-radius-pill);
-  background: var(--ot-hl);
-  color: var(--ot-navy);
-  font-size: var(--ot-fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 .body {
   padding: 18px 20px 20px;
