@@ -22,7 +22,7 @@ dashboardRouter.get(
       prisma.paymentSlip.count({ where: { status: 'PENDING' } }),
       prisma.supportThread.count({ where: { type: 'SUPPORT', status: 'OPEN' } }),
       prisma.order.findMany({
-        where: { status: { in: ['PAID', 'REFUNDED'] } },
+        where: { status: 'PAID' },
         orderBy: { paidAt: 'desc' },
         take: 10,
         include: { user: { select: { name: true, email: true } }, course: { select: { title: true } } },

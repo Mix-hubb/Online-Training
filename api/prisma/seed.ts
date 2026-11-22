@@ -199,7 +199,7 @@ async function main() {
     },
   });
 
-  const coInvestor = await prisma.partner.create({
+  await prisma.partner.create({
     data: {
       name: '[Partner company]',
       contact: '[contact person, phone]',
@@ -208,15 +208,13 @@ async function main() {
       showLogo: true,
       logoOrder: 1,
       userId: partnerUser.id,
+      sharePercentBp: 2500, // 25% of total revenue (all courses)
     },
   });
-  const instructorPartner = await prisma.partner.create({ data: { name: instructor.name, userId: instructor.id } });
-  await prisma.courseRevenueShare.createMany({
-    data: [
-      { courseId: paid.id, partnerId: coInvestor.id, percentBp: 2500 },
-      { courseId: paid.id, partnerId: instructorPartner.id, percentBp: 1000 },
-    ],
-  });
+  // TODO(open question 2026-11-22): do instructors still get a revenue share? Kept as a partner for now.
+  await prisma.partner.create({ data: { name: instructor.name, userId: instructor.id, sharePercentBp: 1000 } });
+  // Admin pin: listed first in the learner catalog.
+  await prisma.course.update({ where: { id: paid.id }, data: { pinOrder: 1 } });
 
   await prisma.enrollment.create({ data: { userId: learner.id, courseId: free.id } });
 

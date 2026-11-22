@@ -24,15 +24,18 @@ export function stripPartner<T extends { partnerId: string; partnerName: string 
   return rows.map(({ partnerId: _p, partnerName: _n, ...rest }) => rest);
 }
 
+/** Totals per currency, the partner's current share of total revenue, and the courses its entries come from (for the filter). */
 export async function partnerSummary(partnerId: string, q: ReturnType<typeof ownQuery>) {
-  const shares = await prisma.courseRevenueShare.findMany({
-    where: { partnerId },
-    include: { course: { select: { id: true, title: true, slug: true } } },
+  const [partner, courseIds] = await Promise.all([
+    prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, select: { sharePercentBp: true } }),
+    prisma.revenueEntry.findMany({ where: { partnerId }, distinct: ['courseId'], select: { courseId: true } }),
+  ]);
+  const courses = await prisma.course.findMany({
+    where: { id: { in: courseIds.map((c) => c.courseId) } },
+    select: { id: true, title: true, slug: true },
+    orderBy: { title: 'asc' },
   });
-  return {
-    totals: await summary(q),
-    courses: shares.map((s) => ({ ...s.course, percentBp: s.percentBp })),
-  };
+  return { totals: await summary(q), sharePercentBp: partner.sharePercentBp, courses };
 }
 
 partnerRouter.get(

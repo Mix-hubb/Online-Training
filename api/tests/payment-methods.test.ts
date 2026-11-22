@@ -44,8 +44,7 @@ describe('payment methods', () => {
     const u = await makeUser();
     const admin = await makeUser('ADMIN');
     const c = await makeCourse({ isFree: false, priceMinor: 1000, priceThbMinor: 35000 });
-    const p = await prisma.partner.create({ data: { name: 'P' } });
-    await prisma.courseRevenueShare.create({ data: { courseId: c.id, partnerId: p.id, percentBp: 1000 } });
+    await prisma.partner.create({ data: { name: 'P', sharePercentBp: 1000 } });
 
     const co = await as(u.id).post(`/courses/${c.id}/checkout/bank-transfer`);
     expect(co.status).toBe(201);
@@ -69,8 +68,7 @@ describe('payment methods', () => {
   it('markOrderPaid idempotent across Stripe, slip, Bitcoin', async () => {
     const u = await makeUser();
     const c = await makeCourse({ isFree: false, priceMinor: 1000, priceThbMinor: 35000 });
-    const p = await prisma.partner.create({ data: { name: 'P' } });
-    await prisma.courseRevenueShare.create({ data: { courseId: c.id, partnerId: p.id, percentBp: 1000 } });
+    await prisma.partner.create({ data: { name: 'P', sharePercentBp: 1000 } });
     const o = await prisma.order.create({ data: { userId: u.id, courseId: c.id, amountMinor: 1000, currency: 'usd', provider: 'CRYPTO', providerRef: 'btc_1' } });
     // Three different sources race for the same order.
     await Promise.all([markOrderPaid(o.id), markOrderPaid(o.id, { stripePaymentIntentId: 'pi_x' }), markOrderPaid(o.id)]);

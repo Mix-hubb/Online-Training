@@ -1,18 +1,21 @@
 // Partners (spec 15.1, 15.9). A partner is a co-investor (role PARTNER login, logo on the site)
 // or an instructor with a revenue share (userId = an INSTRUCTOR account).
 //   GET    /admin/partners
-//   POST   /admin/partners                 { name, contact?, websiteUrl?, showLogo?, logoOrder?, logoUrl?, userId? }
+//   POST   /admin/partners                 { name, contact?, websiteUrl?, showLogo?, logoOrder?, logoUrl?, userId?, sharePercentBp? }
+//          sharePercentBp = share of TOTAL revenue (all courses), basis points. Sum over all partners <= 10000.
+//          A new percent only applies to orders paid after the change (entries keep their snapshot).
 //   PATCH  /admin/partners/:id
 //   POST   /admin/partners/:id/logo        { file }  (public image)
 //   PUT    /admin/partners/logo-order      { ids }
 //   POST   /admin/partners/:id/account     { email }  -> PARTNER login; temporary password returned ONCE
 //   POST   /admin/partners/:id/account/reset-password  -> FALLBACK only (partner should use "Forgot password?" first)
-//   DELETE /admin/partners/:id             (blocked while shares or ledger entries exist)
+//   DELETE /admin/partners/:id             (blocked while a share or ledger entries exist)
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { z } from 'zod';
-import { prisma } from '../../db.js';
+import { prisma, type Tx } from '../../db.js';
+import { MAX_TOTAL_SHARE_BP } from '../revenue/ledger.service.js';
 import { h } from '../../lib/async.js';
 import { AppError } from '../../lib/errors.js';
 import { body, email } from '../../lib/validate.js';
@@ -31,7 +34,19 @@ const fields = z.object({
   showLogo: z.boolean().optional(),
   logoOrder: z.number().int().optional(),
   userId: z.string().nullable().optional(),
+  sharePercentBp: z.number().int().min(0).max(MAX_TOTAL_SHARE_BP).optional(),
 });
+
+/** Sum of every partner's share must stay <= 100%. Runs inside the write transaction under a lock. */
+async function checkTotalShare(tx: Tx, sharePercentBp: number | undefined, partnerId?: string) {
+  if (sharePercentBp === undefined) return;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('partner_share_total'))`;
+  const others = await tx.partner.aggregate({ where: partnerId ? { id: { not: partnerId } } : {}, _sum: { sharePercentBp: true } });
+  const total = (others._sum.sharePercentBp ?? 0) + sharePercentBp;
+  if (total > MAX_TOTAL_SHARE_BP) {
+    throw new AppError('VALIDATION_FAILED', 400, `Partner shares add up to ${(total / 100).toFixed(2)}%, the maximum is 100%`);
+  }
+}
 
 async function checkLinkUser(userId: string | null | undefined, partnerId?: string) {
   if (!userId) return;
@@ -47,7 +62,6 @@ async function listPartners() {
       orderBy: [{ logoOrder: 'asc' }, { name: 'asc' }],
       include: {
         user: { select: { id: true, email: true, role: true, status: true, mustChangePassword: true } },
-        shares: { include: { course: { select: { id: true, title: true } } } },
       },
     }),
     prisma.revenueEntry.groupBy({ by: ['partnerId', 'currency'], where: { status: 'UNPAID' }, _sum: { amountMinor: true } }),
@@ -66,8 +80,12 @@ partnersAdminRouter.post(
   h(async (req, res) => {
     const input = body(req, fields);
     await checkLinkUser(input.userId);
-    const p = await prisma.partner.create({ data: input });
-    await writeAudit(req.user!.id, 'partner.create', 'Partner', p.id, input);
+    const p = await prisma.$transaction(async (tx) => {
+      await checkTotalShare(tx, input.sharePercentBp);
+      const created = await tx.partner.create({ data: input });
+      await writeAudit(req.user!.id, 'partner.create', 'Partner', created.id, input, tx);
+      return created;
+    });
     res.status(201).json(p);
   }),
 );
@@ -87,10 +105,13 @@ partnersAdminRouter.patch(
   h(async (req, res) => {
     const input = body(req, fields.partial());
     await checkLinkUser(input.userId, req.params.id);
-    const p = await prisma.partner.update({ where: { id: req.params.id }, data: input }).catch(() => {
-      throw new AppError('NOT_FOUND', 404);
+    const p = await prisma.$transaction(async (tx) => {
+      if (!(await tx.partner.findUnique({ where: { id: req.params.id } }))) throw new AppError('NOT_FOUND', 404);
+      await checkTotalShare(tx, input.sharePercentBp, req.params.id);
+      const updated = await tx.partner.update({ where: { id: req.params.id }, data: input });
+      await writeAudit(req.user!.id, 'partner.update', 'Partner', updated.id, input, tx);
+      return updated;
     });
-    await writeAudit(req.user!.id, 'partner.update', 'Partner', p.id, input);
     res.json(p);
   }),
 );
@@ -159,10 +180,10 @@ partnersAdminRouter.post(
 partnersAdminRouter.delete(
   '/partners/:id',
   h(async (req, res) => {
-    const p = await prisma.partner.findUnique({ where: { id: req.params.id }, include: { _count: { select: { shares: true, entries: true, payouts: true } } } });
+    const p = await prisma.partner.findUnique({ where: { id: req.params.id }, include: { _count: { select: { entries: true, payouts: true } } } });
     if (!p) throw new AppError('NOT_FOUND', 404);
-    if (p._count.shares || p._count.entries || p._count.payouts) {
-      throw new AppError('VALIDATION_FAILED', 409, 'This partner has shares or ledger history. Hide the logo instead.');
+    if (p.sharePercentBp > 0 || p._count.entries || p._count.payouts) {
+      throw new AppError('VALIDATION_FAILED', 409, 'This partner has a share or ledger history. Set the share to 0% and hide the logo instead.');
     }
     await prisma.partner.delete({ where: { id: p.id } });
     await writeAudit(req.user!.id, 'partner.delete', 'Partner', p.id, { name: p.name });

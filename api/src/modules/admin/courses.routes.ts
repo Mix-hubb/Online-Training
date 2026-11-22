@@ -6,6 +6,11 @@
 //   POST   /admin/courses/:id/status    { status: DRAFT|PUBLISHED|ARCHIVED }
 //   DELETE /admin/courses/:id           (blocked when orders exist: archive instead)
 //   GET    /admin/courses/:id/learners
+//   GET    /admin/courses/pins          pinned courses in pinOrder
+//   POST   /admin/courses/:id/pin       pin (PUBLISHED only), added at the end
+//   DELETE /admin/courses/:id/pin
+//   PUT    /admin/courses/pins          { ids } new order of the pinned courses (same set)
+// Pins are admin-only, no limit. Leaving PUBLISHED clears the pin.
 //   POST   /admin/courses/:id/intro-upload-init
 import { Router } from 'express';
 import { z } from 'zod';
@@ -55,7 +60,6 @@ async function loadFull(id: string) {
       lessons: { orderBy: { order: 'asc' }, include: { renditions: true } },
       quiz: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
       instructors: { include: { user: { select: { id: true, name: true, email: true } } } },
-      shares: { include: { partner: { select: { id: true, name: true } } } },
       _count: { select: { enrollments: true, orders: true } },
     },
   });
@@ -98,6 +102,7 @@ coursesAdminRouter.get(
           lessons: c._count.lessons,
           learners: c._count.enrollments,
           updatedAt: c.updatedAt,
+          pinOrder: c.pinOrder,
         })),
         total,
         p,
@@ -123,6 +128,63 @@ coursesAdminRouter.post(
     });
     await writeAudit(req.user!.id, 'course.create', 'Course', course.id, input);
     res.status(201).json(await loadFull(course.id));
+  }),
+);
+
+const pinnedList = () =>
+  prisma.course.findMany({
+    where: { pinOrder: { not: null } },
+    orderBy: { pinOrder: 'asc' },
+    select: { id: true, slug: true, title: true, status: true, thumbnailUrl: true, pinOrder: true },
+  });
+
+coursesAdminRouter.get('/courses/pins', h(async (_req, res) => res.json(await pinnedList())));
+
+coursesAdminRouter.put(
+  '/courses/pins',
+  h(async (req, res) => {
+    const { ids } = body(req, z.object({ ids: z.array(z.string().min(1)).max(500) }));
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_pins'))`;
+      const current = await tx.course.findMany({ where: { pinOrder: { not: null } }, select: { id: true } });
+      const same = new Set(ids).size === ids.length && ids.length === current.length && current.every((c) => ids.includes(c.id));
+      if (!same) throw new AppError('VALIDATION_FAILED', 409, 'The pinned list changed. Reload and try again.');
+      for (let i = 0; i < ids.length; i++) await tx.course.update({ where: { id: ids[i] }, data: { pinOrder: i + 1 } });
+      await writeAudit(req.user!.id, 'course.pin_order', 'Course', null, { ids }, tx);
+    });
+    res.json(await pinnedList());
+  }),
+);
+
+coursesAdminRouter.post(
+  '/courses/:id/pin',
+  h(async (req, res) => {
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_pins'))`;
+      const c = await tx.course.findUnique({ where: { id: req.params.id }, select: { id: true, status: true, pinOrder: true } });
+      if (!c) throw new AppError('NOT_FOUND', 404);
+      if (c.status !== 'PUBLISHED') throw new AppError('VALIDATION_FAILED', 400, 'Only published courses can be pinned');
+      if (c.pinOrder !== null) return;
+      const last = await tx.course.aggregate({ _max: { pinOrder: true } });
+      await tx.course.update({ where: { id: c.id }, data: { pinOrder: (last._max.pinOrder ?? 0) + 1 } });
+      await writeAudit(req.user!.id, 'course.pin', 'Course', c.id, {}, tx);
+    });
+    res.json(await pinnedList());
+  }),
+);
+
+coursesAdminRouter.delete(
+  '/courses/:id/pin',
+  h(async (req, res) => {
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_pins'))`;
+      const c = await tx.course.findUnique({ where: { id: req.params.id }, select: { id: true, pinOrder: true } });
+      if (!c) throw new AppError('NOT_FOUND', 404);
+      if (c.pinOrder === null) return;
+      await tx.course.update({ where: { id: c.id }, data: { pinOrder: null } });
+      await writeAudit(req.user!.id, 'course.unpin', 'Course', c.id, {}, tx);
+    });
+    res.json(await pinnedList());
   }),
 );
 
@@ -171,7 +233,11 @@ coursesAdminRouter.post(
     }
     await prisma.course.update({
       where: { id: c.id },
-      data: { status, ...(status === 'PUBLISHED' && !c.publishedAt ? { publishedAt: new Date() } : {}) },
+      data: {
+        status,
+        ...(status === 'PUBLISHED' && !c.publishedAt ? { publishedAt: new Date() } : {}),
+        ...(status !== 'PUBLISHED' ? { pinOrder: null } : {}), // only PUBLISHED courses stay pinned
+      },
     });
     await writeAudit(req.user!.id, 'course.status', 'Course', c.id, { from: c.status, to: status });
     res.json(await loadFull(c.id));

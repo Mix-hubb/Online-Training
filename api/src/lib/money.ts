@@ -6,8 +6,7 @@ export function formatMoney(minor: number, currency: string): string {
 
 /** Share of an amount in basis points, rounded down (the remainder stays with the company). */
 export function shareOf(baseMinor: number, percentBp: number): number {
-  const v = (Math.abs(baseMinor) * percentBp) / 10000;
-  return Math.sign(baseMinor) * Math.floor(v);
+  return Math.floor((baseMinor * percentBp) / 10000);
 }
 
 /** Add amounts per currency. */

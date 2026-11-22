@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { markOrderPaid, markOrderRefunded } from '../src/lib/order-paid.js';
+import { markOrderPaid } from '../src/lib/order-paid.js';
+import { handleStripeEvent } from '../src/modules/payments/webhook.routes.js';
 import { shareOf } from '../src/lib/money.js';
 import { as, makeCourse, makeUser, prisma, resetDb } from './helpers.js';
 
+// Revenue share is per partner (share of TOTAL revenue, all courses), changed 2026-11-22.
 async function setup() {
   const buyer = await makeUser();
   const admin = await makeUser('ADMIN');
   const c = await makeCourse({ isFree: false, priceMinor: 10000, priceThbMinor: 350000 });
-  const p = await prisma.partner.create({ data: { name: 'Co-investor' } });
-  await prisma.courseRevenueShare.create({ data: { courseId: c.id, partnerId: p.id, percentBp: 2500 } });
+  const p = await prisma.partner.create({ data: { name: 'Co-investor', sharePercentBp: 2500 } });
   return { buyer, admin, c, p };
 }
 
@@ -23,13 +24,25 @@ describe('revenue ledger', () => {
 
   it('rounds down', () => {
     expect(shareOf(999, 3333)).toBe(332);
-    expect(shareOf(-999, 3333)).toBe(-332);
+  });
+
+  it('one entry per partner with a share, for every course', async () => {
+    const { buyer, c } = await setup();
+    await prisma.partner.create({ data: { name: 'Second', sharePercentBp: 1000 } });
+    await prisma.partner.create({ data: { name: 'No share' } });
+    const other = await makeCourse({ isFree: false, priceMinor: 2000 });
+    const o1 = await paidOrder(buyer.id, c.id, 10000, 'usd');
+    const o2 = await paidOrder(buyer.id, other.id, 2000, 'usd');
+    const e1 = await prisma.revenueEntry.findMany({ where: { orderId: o1.id }, orderBy: { amountMinor: 'desc' } });
+    expect(e1.map((e) => e.amountMinor)).toEqual([2500, 1000]);
+    const e2 = await prisma.revenueEntry.findMany({ where: { orderId: o2.id }, orderBy: { amountMinor: 'desc' } });
+    expect(e2.map((e) => [e.amountMinor, e.courseId])).toEqual([[500, other.id], [200, other.id]]);
   });
 
   it('stores percent at payment time', async () => {
-    const { buyer, c, p } = await setup();
+    const { buyer, admin, c, p } = await setup();
     const o1 = await paidOrder(buyer.id, c.id, 10000, 'usd');
-    await prisma.courseRevenueShare.update({ where: { courseId_partnerId: { courseId: c.id, partnerId: p.id } }, data: { percentBp: 5000 } });
+    expect((await as(admin.id).patch(`/admin/partners/${p.id}`).send({ sharePercentBp: 5000 })).status).toBe(200);
     const other = await makeUser();
     await paidOrder(other.id, c.id, 10000, 'usd');
     const e1 = await prisma.revenueEntry.findFirstOrThrow({ where: { orderId: o1.id } });
@@ -39,20 +52,15 @@ describe('revenue ledger', () => {
     expect(all.map((e) => e.percentBp)).toEqual([2500, 5000]);
   });
 
-  it('refund writes negative mirror entries', async () => {
-    const { buyer, c, p } = await setup();
+  it('Stripe refund events are ignored', async () => {
+    const { buyer, c } = await setup();
     const o = await paidOrder(buyer.id, c.id, 10000, 'usd');
-    await prisma.courseRevenueShare.update({ where: { courseId_partnerId: { courseId: c.id, partnerId: p.id } }, data: { percentBp: 9000 } });
-    await markOrderRefunded(o.id);
-    await markOrderRefunded(o.id); // twice -> once
-    const rows = await prisma.revenueEntry.findMany({ where: { orderId: o.id }, orderBy: { amountMinor: 'desc' } });
-    expect(rows).toHaveLength(2);
-    expect(rows[1].amountMinor).toBe(-2500);
-    expect(rows[1].percentBp).toBe(2500);
-    expect(rows[1].reversesId).toBe(rows[0].id);
-    expect((await prisma.order.findUniqueOrThrow({ where: { id: o.id } })).status).toBe('REFUNDED');
-    // Access is kept in v1.
-    expect(await prisma.enrollment.count({ where: { userId: buyer.id } })).toBe(1);
+    await prisma.order.update({ where: { id: o.id }, data: { stripePaymentIntentId: 'pi_r' } });
+    await handleStripeEvent({ type: 'charge.refunded', data: { object: { payment_intent: 'pi_r', refunded: true } } } as never);
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: o.id } })).status).toBe('PAID');
+    const rows = await prisma.revenueEntry.findMany({ where: { orderId: o.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].amountMinor).toBe(2500);
   });
 
   it('payout covers only unpaid entries', async () => {
@@ -84,12 +92,13 @@ describe('revenue ledger', () => {
     expect(csv.text.split('\n')[0]).toContain('share_amount');
   });
 
-  it('shares over 100% are refused', async () => {
-    const { admin, c, p } = await setup();
-    const p2 = await prisma.partner.create({ data: { name: 'Other' } });
-    const r = await as(admin.id)
-      .put(`/admin/courses/${c.id}/revenue-shares`)
-      .send({ shares: [{ partnerId: p.id, percentBp: 6000 }, { partnerId: p2.id, percentBp: 5000 }] });
-    expect(r.status).toBe(400);
+  it('all partners together over 100% are refused', async () => {
+    const { admin, p } = await setup(); // 25%
+    const create = await as(admin.id).post('/admin/partners').send({ name: 'Big', sharePercentBp: 7600 });
+    expect(create.status).toBe(400);
+    const ok = await as(admin.id).post('/admin/partners').send({ name: 'Rest', sharePercentBp: 7500 });
+    expect(ok.status).toBe(201);
+    expect((await as(admin.id).patch(`/admin/partners/${p.id}`).send({ sharePercentBp: 2501 })).status).toBe(400);
+    expect((await as(admin.id).patch(`/admin/partners/${p.id}`).send({ sharePercentBp: 2000 })).status).toBe(200);
   });
 });

@@ -19,7 +19,6 @@ import { usersAdminRouter } from './users.routes.js';
 import { certificateTemplateAdminRouter } from './certificate-template.routes.js';
 import { auditAdminRouter } from './audit.routes.js';
 import { revenueAdminRouter } from './revenue.routes.js';
-import { revenueSharesAdminRouter } from './revenue-shares.routes.js';
 import { instructorsAdminRouter } from './instructors.routes.js';
 import { supportAdminRouter } from './support.routes.js';
 import { paymentReviewAdminRouter } from './payment-review.routes.js';
@@ -55,7 +54,6 @@ adminRouter.use(
   certificateTemplateAdminRouter,
   auditAdminRouter,
   revenueAdminRouter,
-  revenueSharesAdminRouter,
   instructorsAdminRouter,
   supportAdminRouter,
   paymentReviewAdminRouter,

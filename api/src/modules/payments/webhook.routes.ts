@@ -3,12 +3,12 @@
 // checkout.session.completed (paid)          -> markOrderPaid (idempotent)
 // checkout.session.async_payment_succeeded   -> markOrderPaid (PromptPay)
 // checkout.session.async_payment_failed / expired -> order FAILED (only from PENDING)
-// charge.refunded                             -> REFUNDED + negative ledger entries (access kept, open decision 10.3)
+// Refund events (charge.refunded, ...) are ignored: refunds are handled with Stripe directly, outside the system.
 import { Router } from 'express';
 import type Stripe from 'stripe';
 import { prisma } from '../../db.js';
 import { config } from '../../config.js';
-import { markOrderPaid, markOrderRefunded } from '../../lib/order-paid.js';
+import { markOrderPaid } from '../../lib/order-paid.js';
 import { stripe } from './stripe.js';
 
 export const stripeWebhookRouter = Router();
@@ -40,14 +40,6 @@ export async function handleStripeEvent(event: Stripe.Event) {
     case 'checkout.session.expired': {
       const s = event.data.object as Stripe.Checkout.Session;
       await prisma.order.updateMany({ where: { stripeSessionId: s.id, status: 'PENDING' }, data: { status: 'FAILED' } });
-      return;
-    }
-    case 'charge.refunded': {
-      const c = event.data.object as Stripe.Charge;
-      const pi = typeof c.payment_intent === 'string' ? c.payment_intent : c.payment_intent?.id;
-      if (!pi || !c.refunded) return; // partial refunds: handled by hand for now
-      const order = await prisma.order.findFirst({ where: { stripePaymentIntentId: pi } });
-      if (order) await markOrderRefunded(order.id);
       return;
     }
     default:

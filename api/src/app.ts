@@ -21,7 +21,6 @@ import { notificationsRouter } from './modules/notifications/notifications.route
 import { adminRouter } from './modules/admin/index.js';
 import { cryptoWebhookRouter } from './modules/payments/crypto-webhook.routes.js';
 import { bankTransferRouter } from './modules/payments/bank-transfer.routes.js';
-import { pinsRouter } from './modules/pins/pins.routes.js';
 import { chatRouter } from './modules/chat/chat.routes.js';
 import { instructorRouter } from './modules/instructor/index.js';
 import { partnerRouter } from './modules/partner/partner.routes.js';
@@ -61,7 +60,6 @@ export function createApp() {
   app.use(certificatesRouter);   // /certificates/:number, /me/certificates/:id/pdf
   app.use(notificationsRouter);  // /notifications
   app.use(bankTransferRouter);   // /payments/bank-details, /courses/:id/checkout/bank-transfer, /orders/:id/slip
-  app.use(pinsRouter);           // /me/pins
   app.use(chatRouter);           // /me/threads, /threads/..., /attachments/:id/url
   app.use('/instructor', instructorRouter);
   app.use(partnerRouter);          // /partner/* (requireAuth + requirePartner)

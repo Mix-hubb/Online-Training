@@ -36,6 +36,14 @@ export function courseCard(c: CardCourse) {
   };
 }
 
+/** Learner-facing order: admin-pinned courses first (by pinOrder), then newest. No "pinned" flag is sent to learners. */
+export const catalogOrder: Prisma.CourseOrderByWithRelationInput[] = [
+  { pinOrder: { sort: 'asc', nulls: 'last' } },
+  { publishedAt: 'desc' },
+  { createdAt: 'desc' },
+  { id: 'asc' },
+];
+
 export async function listCourses(q: CourseListQuery) {
   const where: Prisma.CourseWhereInput = { status: 'PUBLISHED' };
   if (q.q) {
@@ -52,7 +60,7 @@ export async function listCourses(q: CourseListQuery) {
     prisma.course.findMany({
       where,
       include: cardInclude,
-      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: catalogOrder,
       skip: (q.page - 1) * q.pageSize,
       take: q.pageSize,
     }),
@@ -81,9 +89,6 @@ export async function courseDetail(slug: string, viewer?: User) {
   if (c.status === 'DRAFT' && !isStaff) throw new AppError('NOT_FOUND', 404);
   if (c.status === 'ARCHIVED' && !isStaff && !enrollment) throw new AppError('COURSE_UNAVAILABLE', 410);
 
-  const pinned = viewer
-    ? Boolean(await prisma.userPin.findUnique({ where: { userId_courseId: { userId: viewer.id, courseId: c.id } } }))
-    : false;
   const pending = viewer
     ? await prisma.order.findFirst({
         where: { userId: viewer.id, courseId: c.id, status: { in: ['PENDING', 'AWAITING_SLIP'] } },
@@ -112,7 +117,6 @@ export async function courseDetail(slug: string, viewer?: User) {
           enrolled: Boolean(enrollment),
           enrollmentStatus: enrollment?.status ?? null,
           lastLessonId: enrollment?.lastLessonId ?? null,
-          pinned,
           pendingOrder: pending,
         }
       : null,

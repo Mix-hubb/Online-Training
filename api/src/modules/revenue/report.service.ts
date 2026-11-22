@@ -46,7 +46,6 @@ export async function revenueRows(q: ReportQuery, limit = 5000) {
     baseMinor: r.baseMinor,
     percentBp: r.percentBp,
     amountMinor: r.amountMinor,
-    isReversal: Boolean(r.reversesId),
     status: r.status,
     payout: r.payout,
   }));
@@ -96,7 +95,7 @@ const csvCell = (v: unknown) => {
 };
 
 export function toCsv(rows: Awaited<ReturnType<typeof revenueRows>>, opts: { includePartner: boolean }) {
-  const head = ['date', ...(opts.includePartner ? ['partner'] : []), 'course', 'order', 'currency', 'order_amount', 'share_percent', 'share_amount', 'type', 'status'];
+  const head = ['date', ...(opts.includePartner ? ['partner'] : []), 'course', 'order', 'currency', 'order_amount', 'share_percent', 'share_amount', 'status'];
   const lines = rows.map((r) =>
     [
       r.date.toISOString(),
@@ -107,7 +106,6 @@ export function toCsv(rows: Awaited<ReturnType<typeof revenueRows>>, opts: { inc
       (r.baseMinor / 100).toFixed(2),
       (r.percentBp / 100).toFixed(2),
       (r.amountMinor / 100).toFixed(2),
-      r.isReversal ? 'refund' : 'sale',
       r.status,
     ]
       .map(csvCell)

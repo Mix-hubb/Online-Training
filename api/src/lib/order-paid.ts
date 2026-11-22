@@ -5,7 +5,7 @@ import { prisma, type Tx } from '../db.js';
 import { AppError } from './errors.js';
 import { notify } from './notify.js';
 import { ensureEnrollment } from '../modules/learning/enrollment.service.js';
-import { onOrderPaid, onOrderRefunded } from '../modules/revenue/ledger.service.js';
+import { onOrderPaid } from '../modules/revenue/ledger.service.js';
 
 export interface PaidInfo {
   stripePaymentIntentId?: string | null;
@@ -35,14 +35,4 @@ export async function markOrderPaid(orderId: string, info: PaidInfo = {}, outer?
     return { changed: true };
   };
   return outer ? run(outer) : prisma.$transaction(run);
-}
-
-/** Refund: order -> REFUNDED and negative ledger entries. Access is kept in v1 (open decision 10.3). */
-export async function markOrderRefunded(orderId: string): Promise<{ changed: boolean }> {
-  return prisma.$transaction(async (tx) => {
-    const flipped = await tx.order.updateMany({ where: { id: orderId, status: 'PAID' }, data: { status: 'REFUNDED' } });
-    if (flipped.count === 0) return { changed: false };
-    await onOrderRefunded(tx, orderId);
-    return { changed: true };
-  });
 }

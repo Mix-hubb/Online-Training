@@ -8,14 +8,8 @@ async function setup() {
   const admin = await makeUser('ADMIN');
   const buyer = await makeUser('USER', { email: `buyer-${Date.now()}@secret.test` });
   const c = await makeCourse({ isFree: false, priceMinor: 10000 });
-  const mine = await prisma.partner.create({ data: { name: 'Mine Co' } });
-  const other = await prisma.partner.create({ data: { name: 'Other Co' } });
-  await prisma.courseRevenueShare.createMany({
-    data: [
-      { courseId: c.id, partnerId: mine.id, percentBp: 2000 },
-      { courseId: c.id, partnerId: other.id, percentBp: 3000 },
-    ],
-  });
+  const mine = await prisma.partner.create({ data: { name: 'Mine Co', sharePercentBp: 2000 } });
+  const other = await prisma.partner.create({ data: { name: 'Other Co', sharePercentBp: 3000 } });
   const o = await prisma.order.create({ data: { userId: buyer.id, courseId: c.id, amountMinor: 10000, currency: 'usd' } });
   await markOrderPaid(o.id);
   const acc = await as(admin.id).post(`/admin/partners/${mine.id}/account`).send({ email: 'mine@partner.test' });
@@ -132,8 +126,7 @@ describe('partner portal', () => {
   it('instructor with a share sees own earnings', async () => {
     const { c } = await setup();
     const ins = await makeUser('INSTRUCTOR');
-    const p = await prisma.partner.create({ data: { name: 'Ins', userId: ins.id } });
-    await prisma.courseRevenueShare.create({ data: { courseId: c.id, partnerId: p.id, percentBp: 500 } });
+    await prisma.partner.create({ data: { name: 'Ins', userId: ins.id, sharePercentBp: 500 } });
     const b = await makeUser();
     const o = await prisma.order.create({ data: { userId: b.id, courseId: c.id, amountMinor: 10000, currency: 'usd' } });
     await markOrderPaid(o.id);

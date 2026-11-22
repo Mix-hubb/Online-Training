@@ -90,7 +90,6 @@ enum OrderStatus {
   PENDING
   AWAITING_SLIP
   PAID
-  REFUNDED
   FAILED
 }
 
@@ -116,7 +115,6 @@ model User {
   auditLogs     AuditLog[]
 
   teaches     CourseInstructor[]
-  pins        UserPin[]
   threads     SupportThread[]
   messages    ThreadMessage[]
   partnerLink Partner?
@@ -172,16 +170,15 @@ model Course {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   publishedAt   DateTime?
+  pinOrder      Int? // admin pin: null = not pinned; pinned PUBLISHED courses list first by pinOrder
 
-  category    Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category    Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   tags        CourseTag[]
   lessons     Lesson[]
   quiz        Quiz?
   enrollments Enrollment[]
   orders      Order[]
   instructors CourseInstructor[]
-  pins        UserPin[]
-  shares      CourseRevenueShare[]
   threads     SupportThread[]
 
   @@index([status])
@@ -421,7 +418,7 @@ model AuditLog {
   @@index([at])
 }
 
-// ===== Added: instructors, pins, video renditions =====
+// ===== Added: instructors, video renditions =====
 
 model CourseInstructor {
   courseId   String
@@ -434,17 +431,6 @@ model CourseInstructor {
 
   @@id([courseId, userId])
   @@index([userId])
-}
-
-model UserPin {
-  userId    String
-  courseId  String
-  createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@id([userId, courseId])
 }
 
 model LessonRendition {
@@ -462,31 +448,21 @@ model LessonRendition {
 // A partner gets a revenue share: a co-investor (logo shown on the site) or an instructor.
 // userId links the login account: role PARTNER (created by an admin) or the instructor's own account.
 model Partner {
-  id         String   @id @default(cuid())
-  name       String
-  contact    String?
-  userId     String?  @unique // login account: PARTNER (admin-created) or INSTRUCTOR; null until created
-  logoUrl    String? // public image via FileStorage
-  websiteUrl String?
-  showLogo   Boolean  @default(false) // show in the home page / footer partner strip
-  logoOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String
+  contact        String?
+  userId         String?  @unique // login account: PARTNER (admin-created) or INSTRUCTOR; null until created
+  logoUrl        String? // public image via FileStorage
+  websiteUrl     String?
+  showLogo       Boolean  @default(false) // show in the home page / footer partner strip
+  logoOrder      Int      @default(0)
+  // Share of TOTAL revenue (all courses), basis points: 2500 = 25%. Sum over all partners <= 10000 (enforced in code).
+  sharePercentBp Int      @default(0)
+  createdAt      DateTime @default(now())
 
-  user    User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  shares  CourseRevenueShare[]
+  user    User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   entries RevenueEntry[]
   payouts PartnerPayout[]
-}
-
-model CourseRevenueShare {
-  courseId  String
-  partnerId String
-  percentBp Int // basis points, 2500 = 25%. Sum per course must be <= 10000 (enforce in code)
-
-  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
-
-  @@id([courseId, partnerId])
 }
 
 model RevenueEntry {
@@ -497,8 +473,7 @@ model RevenueEntry {
   currency    String
   baseMinor   Int // order amount used for the split
   percentBp   Int // snapshot at the time of the order
-  amountMinor Int // negative for refund reversals
-  reversesId  String?     @unique // set on a reversal entry
+  amountMinor Int
   status      EntryStatus @default(UNPAID)
   payoutId    String?
   createdAt   DateTime    @default(now())
