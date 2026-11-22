@@ -278,6 +278,8 @@ h2 {
 .media {
   position: relative;
   aspect-ratio: 16 / 9;
+  /* On very wide screens keep the cover from taking the whole viewport height. */
+  max-height: 62vh;
   border: 1px solid var(--ot-border);
   border-radius: var(--ot-radius-card);
   background: var(--ot-thumb);

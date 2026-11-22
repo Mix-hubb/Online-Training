@@ -32,7 +32,7 @@ async function logout() {
 
 <template>
   <v-app-bar flat color="background" border="b" height="72">
-    <v-container class="d-flex align-center py-0" style="max-width: 1200px">
+    <v-container class="d-flex align-center py-0" style="max-width: var(--ot-page-max); padding-inline: var(--ot-gutter)">
       <v-app-bar-nav-icon v-if="!mdAndUp" aria-label="Open menu" @click="drawer = !drawer" />
       <router-link to="/" class="d-flex align-center text-decoration-none mr-6" aria-label="Online Training home">
         <BrandMark class="mr-2" />

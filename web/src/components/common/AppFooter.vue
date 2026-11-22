@@ -67,9 +67,9 @@ const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as
   color: var(--ot-muted);
 }
 .footer-inner {
-  max-width: 1200px;
+  max-width: var(--ot-page-max);
   margin: 0 auto;
-  padding: 48px 24px 24px;
+  padding: 48px var(--ot-gutter) 24px;
 }
 .footer-cols {
   display: flex;

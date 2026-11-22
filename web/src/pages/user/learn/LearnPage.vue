@@ -161,9 +161,9 @@ onMounted(async () => {
 
 <style scoped>
 .learn {
-  max-width: 1320px;
+  max-width: var(--ot-page-max);
   margin: 0 auto;
-  padding: 24px 24px 64px;
+  padding: 24px var(--ot-gutter) 64px;
   display: flex;
   flex-direction: column;
   gap: 20px;

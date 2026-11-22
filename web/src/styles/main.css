@@ -16,6 +16,9 @@
   --ot-deep: #f1f5fa;
   --ot-thumb: #dce8f5;
   --ot-accent: #1f6fb8;
+  /* Page width: wide enough to fill large screens, with side gutters that grow with the screen. */
+  --ot-page-max: 1600px;
+  --ot-gutter: clamp(16px, 3vw, 48px);
   --ot-accent-strong: #17599a;
   --ot-accent-tint: #e6f0fa;
   --ot-accent-tint-text: #17599a;
@@ -268,9 +271,9 @@ a {
 }
 
 .page {
-  max-width: 1200px;
+  max-width: var(--ot-page-max);
   margin: 0 auto;
-  padding: 32px 24px 64px;
+  padding: 32px var(--ot-gutter) 64px;
 }
 .page.narrow {
   max-width: 760px;
@@ -310,7 +313,7 @@ a {
 }
 .admin-page {
   padding: 32px 36px 64px;
-  max-width: 1280px;
+  max-width: var(--ot-page-max);
 }
 
 /* Tables: white panel, uppercase muted headers, row dividers */
