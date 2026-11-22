@@ -12,10 +12,6 @@ const cur = computed(() => props.banners[i.value] ?? null);
 const many = computed(() => props.banners.length > 1);
 const featured = computed(() => cur.value?.linkUrl ?? null);
 const internal = computed(() => !!featured.value && featured.value.startsWith('/'));
-// The last word of the headline gets the highlighter mark.
-const title = computed(() => props.texts.title || 'Learn practical skills, step by step');
-const head = computed(() => title.value.replace(/\s*\S+$/, ''));
-const last = computed(() => title.value.match(/\S+$/)?.[0] ?? '');
 const perks = [
   { icon: 'mdi-play-circle-outline', label: 'Video lessons' },
   { icon: 'mdi-clipboard-check-outline', label: 'Final test' },
@@ -39,8 +35,7 @@ onBeforeUnmount(() => clearInterval(timer));
 <template>
   <section aria-label="Featured banners" class="hero" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
     <div class="text">
-      <span class="kicker"><span class="kdot" aria-hidden="true" />{{ texts.kicker || 'New course' }}</span>
-      <h1>{{ head }} <span class="hl-mark">{{ last }}</span></h1>
+      <h1>{{ texts.title || 'Learn practical skills, step by step' }}</h1>
       <p>{{ texts.subtitle || 'Video lessons, a final test and a certificate.' }}</p>
       <div class="d-flex flex-wrap ga-3 mt-1">
         <a href="#catalog" class="btn primary">Browse courses</a>
@@ -102,29 +97,6 @@ onBeforeUnmount(() => clearInterval(timer));
   flex-direction: column;
   justify-content: center;
   gap: 18px;
-}
-.kicker {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ot-accent-strong);
-  background: var(--ot-surface);
-  border: 1px solid var(--ot-info-border);
-  border-radius: 999px;
-  padding: 5px 12px 5px 10px;
-  box-shadow: var(--ot-shadow-btn);
-}
-.kdot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ot-hl);
-  box-shadow: 0 0 0 3px var(--ot-hl-tint);
 }
 h1 {
   margin: 0;

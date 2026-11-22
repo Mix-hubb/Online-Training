@@ -147,12 +147,6 @@ h3,
   font-family: var(--ot-font-display);
 }
 
-/* Highlighter mark behind a word (the highlight color, as on study notes) */
-.hl-mark {
-  background: linear-gradient(transparent 58%, var(--ot-hl-mark) 58%, var(--ot-hl-mark) 92%, transparent 92%);
-  padding: 0 2px;
-}
-
 /* Small uppercase label above a section title */
 .eyebrow {
   display: inline-flex;
