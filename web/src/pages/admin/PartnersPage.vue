@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Partners (spec 15.8 + 15.9): logo + order on the home page, revenue share, partner login.
 // Revenue share (2026-11-22): co-investors have ONE percentage, taken from each sale AFTER that course's instructor shares;
-// all co-investors together <= 100%. Instructors are paid per course (course editor > Instructors tab), so an
-// instructor's row here has no share field. A new percentage applies only to orders paid after the change.
+// all co-investors together <= 100%. Instructors are paid per course and are listed on the Instructors page, not here.
+// A new percentage applies only to orders paid after the change.
 // Temporary passwords are shown once, here, and never stored in plain text.
 import { computed, onMounted, ref } from 'vue';
 import StatusPill from '@/components/common/StatusPill.vue';
@@ -13,7 +13,7 @@ import { errorMessage, fileToBase64 } from '@/api/client';
 import { money, percentBp } from '@/utils/format';
 
 const rows = ref<api.PartnerRow[]>([]);
-const edit = ref<(api.PartnerInput & { id?: string; sharePercent: string; instructor?: boolean }) | null>(null);
+const edit = ref<(api.PartnerInput & { id?: string; sharePercent: string }) | null>(null);
 const acct = ref<{ id: string; email: string } | null>(null);
 const temp = ref<{ email: string; temporaryPassword: string } | null>(null);
 const del = ref<api.PartnerRow | null>(null);
@@ -48,14 +48,14 @@ const toBp = (v: string) => {
 const formBp = computed(() => (edit.value ? toBp(edit.value.sharePercent) : 0));
 const othersBp = computed(() => rows.value.filter((r) => r.id !== edit.value?.id).reduce((s, r) => s + r.sharePercentBp, 0));
 const formError = computed(() => {
-  if (!edit.value || edit.value.instructor) return '';
+  if (!edit.value) return '';
   if (Number.isNaN(formBp.value)) return 'Enter a number from 0 to 100, up to 2 decimals.';
   if (othersBp.value + formBp.value > 10000) return `All partners would add up to ${percentBp(othersBp.value + formBp.value)}. The maximum is 100%.`;
   return '';
 });
 function openEdit(p?: api.PartnerRow) {
   edit.value = p
-    ? { id: p.id, name: p.name, contact: p.contact, websiteUrl: p.websiteUrl, showLogo: p.showLogo, sharePercent: String(p.sharePercentBp / 100), instructor: p.kind === 'INSTRUCTOR' }
+    ? { id: p.id, name: p.name, contact: p.contact, websiteUrl: p.websiteUrl, showLogo: p.showLogo, sharePercent: String(p.sharePercentBp / 100) }
     : { name: '', contact: '', websiteUrl: '', showLogo: true, sharePercent: '0' };
 }
 async function save() {
@@ -66,7 +66,7 @@ async function save() {
     contact: e.contact || null,
     websiteUrl: e.websiteUrl || null,
     showLogo: e.showLogo,
-    ...(e.instructor ? {} : { sharePercentBp: formBp.value }),
+    sharePercentBp: formBp.value,
   };
   if (await run(() => (e.id ? api.update(e.id, body) : api.create(body)))) edit.value = null;
 }
@@ -99,12 +99,12 @@ async function copy() {
 
 <template>
   <div class="admin-page d-flex flex-column ga-6">
-    <AdminPageHeader title="Partners" subtitle="Co-investors and instructors who share revenue. Logos marked “shown” appear on the home page and footer in this order. Each partner can have a login to see its own share.">
+    <AdminPageHeader title="Partners" subtitle="Co-investors who share revenue. Logos marked “shown” appear on the home page and footer in this order. Each partner can have a login to see its own share.">
       <v-btn color="primary" prepend-icon="mdi-plus" @click="openEdit()">Add partner</v-btn>
     </AdminPageHeader>
     <div class="callout" :class="{ danger: totalBp > 10000 }">
       <span>
-        Instructors are paid first, from the courses they teach (set it in each course's Instructors tab).
+        Instructors are paid first, from the courses they teach (see the <router-link to="/admin/instructors">Instructors</router-link> page).
         Co-investors then get their percent of what is left. Co-investors together: <strong>{{ percentBp(totalBp) }}</strong> · company keeps <strong>{{ percentBp(Math.max(0, 10000 - totalBp)) }}</strong> of what is left.
         A new percentage applies only to orders paid after the change.
       </span>
@@ -142,28 +142,27 @@ async function copy() {
                 </label>
                 <div style="min-width: 0">
                   <div class="font-weight-bold">{{ p.name }}</div>
-                  <div class="text-caption text-muted">{{ p.kind === 'INSTRUCTOR' ? 'Instructor' : 'Co-investor' }}<template v-if="p.contact"> · {{ p.contact }}</template></div>
+                  <div class="text-caption text-muted">Co-investor<template v-if="p.contact"> · {{ p.contact }}</template></div>
                   <div v-if="p.websiteUrl" class="text-caption text-muted">{{ p.websiteUrl }}</div>
                   <div v-if="p.outstanding.length" class="text-caption mt-1" style="color: var(--ot-warning)">Outstanding: <span v-for="o in p.outstanding" :key="o.currency" class="mr-2">{{ money(o.amountMinor, o.currency) }}</span></div>
                 </div>
               </div>
             </td>
             <td class="text-right text-no-wrap">
-              <span v-if="p.kind === 'INSTRUCTOR'" class="text-caption text-muted">Per course</span>
-              <span v-else-if="p.sharePercentBp" class="font-weight-bold">{{ percentBp(p.sharePercentBp) }}</span>
+              <span v-if="p.sharePercentBp" class="font-weight-bold">{{ percentBp(p.sharePercentBp) }}</span>
               <span v-else class="text-caption text-muted">No share</span>
             </td>
             <td><StatusPill :label="p.showLogo ? 'Shown' : 'Hidden'" :tone="p.showLogo ? 'success' : 'neutral'" /></td>
             <td>
               <template v-if="p.user">
                 <div class="text-body-2">{{ p.user.email }}</div>
-                <div class="text-caption text-muted">{{ p.user.role === 'INSTRUCTOR' ? 'Instructor account' : 'Partner account' }}<span v-if="p.user.mustChangePassword"> · temporary password</span></div>
+                <div class="text-caption text-muted">Partner account<span v-if="p.user.mustChangePassword"> · temporary password</span></div>
               </template>
               <span v-else class="text-caption text-muted">No login</span>
             </td>
             <td class="text-right text-no-wrap">
               <button v-if="!p.user" type="button" class="row-btn" @click="acct = { id: p.id, email: '' }">Create login</button>
-              <button v-else-if="p.user.role === 'PARTNER'" type="button" class="row-btn" @click="reset(p)">Reset password</button>
+              <button v-else type="button" class="row-btn" @click="reset(p)">Reset password</button>
               <button type="button" class="row-link" @click="openEdit(p)">Edit</button>
               <button type="button" class="row-link danger" @click="del = p">Delete</button>
             </td>
@@ -179,11 +178,7 @@ async function copy() {
           <v-text-field v-model="edit.name" label="Name" class="mb-2" />
           <v-text-field v-model="edit.contact" label="Contact (person, email or phone)" class="mb-2" />
           <v-text-field v-model="edit.websiteUrl" label="Website (optional)" placeholder="https://" class="mb-2" />
-          <p v-if="edit.instructor" class="text-body-2 text-muted mb-4">
-            This is an instructor. Their share is set per course, in the course editor's Instructors tab.
-          </p>
           <v-text-field
-            v-else
             v-model="edit.sharePercent"
             label="Share of each sale after instructors (%)"
             inputmode="decimal"

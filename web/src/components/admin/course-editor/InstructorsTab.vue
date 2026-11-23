@@ -77,7 +77,7 @@ async function remove(id: string) {
   <section class="panel pa-6 d-flex flex-column ga-4" style="max-width: 820px" aria-labelledby="ins-h">
     <div>
       <h2 id="ins-h" class="h3">Instructors</h2>
-      <p class="ma-0 mt-1 text-body-2 text-muted">Up to 2 per course. They can see learners, grade and answer questions. They cannot edit content. To make someone an instructor, open Users.</p>
+      <p class="ma-0 mt-1 text-body-2 text-muted">Up to 2 per course. They can see learners, grade and answer questions. They cannot edit content. To add a new instructor, open <router-link to="/admin/instructors">Instructors</router-link>.</p>
     </div>
 
     <div class="callout">
@@ -128,7 +128,7 @@ async function remove(id: string) {
       </span>
       <v-btn type="submit" color="primary" :disabled="!pick">Assign instructor</v-btn>
     </form>
-    <span v-if="rows.length < 2 && !free.length" class="text-caption text-muted">No other users have the instructor role.</span>
+    <span v-if="rows.length < 2 && !free.length" class="text-caption text-muted">No other instructors. Add one on the <router-link to="/admin/instructors">Instructors</router-link> page.</span>
   </section>
 </template>
 

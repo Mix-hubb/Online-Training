@@ -7,12 +7,22 @@
 //   DELETE /admin/courses/:id/instructors/:userId
 //   POST   /admin/users/:id/make-instructor
 //   POST   /admin/users/:id/remove-instructor   (only when no course assignments are left)
+// Instructor accounts (2026-11-23, admin "Instructors" page):
+//   GET    /admin/instructors?q&status&page     instructors with their courses, shares and unpaid balance
+//   POST   /admin/instructors  { name, email, promoteExisting? }
+//          new email -> INSTRUCTOR login, temporary password returned ONCE (never stored in plain text)
+//          email of a learner -> ACCOUNT_EXISTS (409); resend with promoteExisting: true to make them an instructor
+//   POST   /admin/instructors/:id/reset-password   FALLBACK only ("Forgot password?" first); temporary password once
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+import { paged, parsePage } from '../../lib/pagination.js';
+import { tempPassword } from '../../lib/tokens.js';
 import { prisma } from '../../db.js';
 import { h } from '../../lib/async.js';
 import { AppError } from '../../lib/errors.js';
-import { body } from '../../lib/validate.js';
+import { body, email, query } from '../../lib/validate.js';
 import { writeAudit } from '../../lib/audit.js';
 import { ensureInstructorPartner, MAX_TOTAL_SHARE_BP } from '../revenue/ledger.service.js';
 import type { Tx } from '../../db.js';
@@ -108,5 +118,99 @@ instructorsAdminRouter.post(
     await prisma.user.update({ where: { id: u.id }, data: { role: 'USER' } });
     await writeAudit(req.user!.id, 'user.remove_instructor', 'User', u.id, { email: u.email });
     res.json({ ok: true });
+  }),
+);
+
+// ---- Instructor accounts ----
+
+instructorsAdminRouter.get(
+  '/instructors',
+  h(async (req, res) => {
+    const q = query(req, z.object({ q: z.string().trim().max(200).optional(), status: z.enum(['ACTIVE', 'BANNED']).optional() }).passthrough());
+    const p = parsePage(req.query);
+    const where: Prisma.UserWhereInput = {
+      role: 'INSTRUCTOR',
+      ...(q.status ? { status: q.status } : {}),
+      ...(q.q ? { OR: [{ email: { contains: q.q, mode: 'insensitive' } }, { name: { contains: q.q, mode: 'insensitive' } }] } : {}),
+    };
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: p.skip,
+        take: p.take,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          status: true,
+          mustChangePassword: true,
+          createdAt: true,
+          teaches: { select: { sharePercentBp: true, course: { select: { id: true, title: true, slug: true, status: true } } }, orderBy: { course: { title: 'asc' } } },
+          partnerLink: { select: { id: true } },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+    const partnerIds = users.map((u) => u.partnerLink?.id).filter((x): x is string => !!x);
+    const unpaid = partnerIds.length
+      ? await prisma.revenueEntry.groupBy({ by: ['partnerId', 'currency'], where: { status: 'UNPAID', partnerId: { in: partnerIds } }, _sum: { amountMinor: true } })
+      : [];
+    const items = users.map(({ partnerLink, teaches, ...u }) => ({
+      ...u,
+      partnerId: partnerLink?.id ?? null,
+      courses: teaches.map((t) => ({ ...t.course, sharePercentBp: t.sharePercentBp })),
+      outstanding: unpaid.filter((x) => x.partnerId === partnerLink?.id).map((x) => ({ currency: x.currency, amountMinor: x._sum.amountMinor ?? 0 })),
+    }));
+    res.json(paged(items, total, p));
+  }),
+);
+
+instructorsAdminRouter.post(
+  '/instructors',
+  h(async (req, res) => {
+    const input = body(req, z.object({ name: z.string().trim().min(1).max(150), email, promoteExisting: z.boolean().optional() }));
+    const existing = await prisma.user.findUnique({ where: { email: input.email } });
+    if (existing) {
+      if (existing.role === 'INSTRUCTOR') throw new AppError('VALIDATION_FAILED', 409, 'This person is already an instructor');
+      if (existing.role !== 'USER') throw new AppError('VALIDATION_FAILED', 409, `This email belongs to a ${existing.role.toLowerCase()} account`);
+      if (!input.promoteExisting) throw new AppError('ACCOUNT_EXISTS', 409, `${existing.name} already has a learner account with this email`);
+      await prisma.user.update({ where: { id: existing.id }, data: { role: 'INSTRUCTOR' } });
+      await writeAudit(req.user!.id, 'user.make_instructor', 'User', existing.id, { email: existing.email });
+      return void res.json({ id: existing.id, email: existing.email, promoted: true, temporaryPassword: null });
+    }
+    const password = tempPassword();
+    const u = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: input.email,
+          name: input.name,
+          role: 'INSTRUCTOR',
+          passwordHash: await bcrypt.hash(password, 10),
+          emailVerifiedAt: new Date(),
+          mustChangePassword: true,
+        },
+      });
+      // Never put the password in the audit log.
+      await writeAudit(req.user!.id, 'instructor.account_create', 'User', created.id, { email: created.email, name: created.name }, tx);
+      return created;
+    });
+    res.status(201).json({ id: u.id, email: u.email, promoted: false, temporaryPassword: password });
+  }),
+);
+
+instructorsAdminRouter.post(
+  '/instructors/:id/reset-password',
+  h(async (req, res) => {
+    const u = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!u || u.role !== 'INSTRUCTOR') throw new AppError('NOT_FOUND', 404);
+    const password = tempPassword();
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(password, 10), mustChangePassword: true } });
+      await tx.authToken.updateMany({ where: { userId: u.id, type: 'RESET', usedAt: null }, data: { usedAt: new Date() } });
+      await writeAudit(req.user!.id, 'instructor.password_reset', 'User', u.id, { email: u.email }, tx);
+    });
+    res.json({ email: u.email, temporaryPassword: password });
   }),
 );

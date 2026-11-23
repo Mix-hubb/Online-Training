@@ -26,6 +26,7 @@ export type ErrorCode =
   | 'MUST_CHANGE_PASSWORD'
   | 'NOT_A_PARTNER'
   | 'NOT_COMPLETED'
+  | 'ACCOUNT_EXISTS'
   | 'TOO_MANY_REQUESTS'
   | 'INTERNAL';
 

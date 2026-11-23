@@ -15,6 +15,7 @@ export const adminRoutes: RouteRecordRaw[] = [
   { path: '/admin/taxonomy', name: 'admin-taxonomy', component: () => import('@/pages/admin/TaxonomyPage.vue'), meta },
   { path: '/admin/users', name: 'admin-users', component: () => import('@/pages/admin/UsersPage.vue'), meta },
   { path: '/admin/certificate', name: 'admin-certificate', component: () => import('@/pages/admin/CertificateTemplatePage.vue'), meta },
+  { path: '/admin/instructors', name: 'admin-instructors', component: () => import('@/pages/admin/InstructorsPage.vue'), meta },
   { path: '/admin/partners', name: 'admin-partners', component: () => import('@/pages/admin/PartnersPage.vue'), meta },
   { path: '/admin/revenue', name: 'admin-revenue', component: () => import('@/pages/admin/RevenuePage.vue'), meta },
   { path: '/admin/support/:threadId?', name: 'admin-support', component: () => import('@/pages/admin/SupportInboxPage.vue'), meta },

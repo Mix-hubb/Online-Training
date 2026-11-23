@@ -1,11 +1,10 @@
 <script setup lang="ts">
-// Users: search/filter, detail drawer (courses, orders), ban/unban, make/remove instructor.
+// Users: learners and admins only (instructors and partners have their own pages). Search/filter, detail drawer, ban/unban.
 import { onMounted, ref, watch } from 'vue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import StatusPill from '@/components/common/StatusPill.vue';
 import * as api from '@/api/admin/users';
-import * as ins from '@/api/admin/instructors';
 import { errorMessage } from '@/api/client';
 import type { Paged } from '@/types';
 import { date, learningStatusLabel, money } from '@/utils/format';
@@ -22,7 +21,7 @@ function askBan(u: { id: string; name: string }) {
 }
 const err = ref('');
 async function load() {
-  data.value = await api.list(q.value);
+  data.value = await api.list({ ...q.value, roles: q.value.role ? undefined : 'USER,ADMIN' });
 }
 onMounted(load);
 let t: ReturnType<typeof setTimeout> | undefined;
@@ -44,12 +43,12 @@ async function act(fn: () => Promise<unknown>) {
     err.value = errorMessage(e);
   }
 }
-const roleLabel: Record<string, string> = { USER: 'Learner', INSTRUCTOR: 'Instructor', PARTNER: 'Partner', ADMIN: 'Admin' };
+const roleLabel: Record<string, string> = { USER: 'Learner', ADMIN: 'Admin' };
 </script>
 
 <template>
   <div class="admin-page d-flex flex-column ga-6">
-    <AdminPageHeader title="Users" subtitle="See who joined, turn accounts off, and set someone as an instructor. Admin roles are not changed here." />
+    <AdminPageHeader title="Users" subtitle="Learners and admins: see who joined and turn accounts off. Instructors and partners are on their own pages." />
     <div class="filters">
       <div class="grow2"><label for="u-q" class="sr-only">Search users</label><input id="u-q" v-model="q.q" type="search" class="ot-input" placeholder="Search name or email" /></div>
       <div class="grow1">
@@ -125,10 +124,7 @@ const roleLabel: Record<string, string> = { USER: 'Learner', INSTRUCTOR: 'Instru
             <v-btn v-if="detail.user.status === 'ACTIVE'" size="small" variant="outlined" color="error" @click="askBan(detail.user)">Ban</v-btn>
             <v-btn v-else size="small" variant="outlined" @click="act(() => api.unban(detail!.user.id))">Unban</v-btn>
           </template>
-          <v-btn v-if="detail.user.role === 'USER'" size="small" variant="outlined" @click="act(() => ins.makeInstructor(detail!.user.id))">Make instructor</v-btn>
-          <v-btn v-if="detail.user.role === 'INSTRUCTOR'" size="small" variant="outlined" @click="act(() => ins.removeInstructor(detail!.user.id))">Remove instructor role</v-btn>
         </div>
-        <div v-if="detail.partner" class="callout">Linked partner: <router-link to="/admin/partners">{{ detail.partner.name }}</router-link></div>
         <section class="d-flex flex-column ga-2">
           <h3 class="dsub">Courses</h3>
           <div v-if="!detail.courses.length" class="text-body-2 text-muted">None.</div>

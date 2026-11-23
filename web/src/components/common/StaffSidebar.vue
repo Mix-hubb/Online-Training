@@ -14,6 +14,7 @@ const ICONS: Record<string, string> = {
   '/admin/grading': 'mdi-clipboard-check-outline',
   '/admin/support': 'mdi-inbox-outline',
   '/admin/payments/review': 'mdi-receipt-text-outline',
+  '/admin/instructors': 'mdi-account-tie-outline',
   '/admin/partners': 'mdi-handshake-outline',
   '/admin/revenue': 'mdi-chart-pie',
   '/admin/landing': 'mdi-home-edit-outline',

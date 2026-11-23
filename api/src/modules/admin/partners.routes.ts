@@ -1,6 +1,7 @@
 // Partners (spec 15.1, 15.9). A partner is a co-investor (role PARTNER login, logo on the site)
 // or an instructor with a revenue share (userId = an INSTRUCTOR account).
-//   GET    /admin/partners
+//   GET    /admin/partners?include=instructors   co-investors only by default; instructors (their Partner row holds
+//          ledger entries and payouts) are managed on /admin/instructors and listed here only on request
 //   POST   /admin/partners                 { name, contact?, websiteUrl?, showLogo?, logoOrder?, logoUrl?, userId?, sharePercentBp? }
 //          sharePercentBp = co-investor share (basis points) of each sale AFTER that course's instructor shares.
 //          Sum over all partners <= 10000. Must be 0 for a partner linked to an INSTRUCTOR account
@@ -67,9 +68,10 @@ async function checkNoInstructorShare(userId: string | null | undefined, sharePe
   }
 }
 
-async function listPartners() {
+async function listPartners(includeInstructors = false) {
   const [rows, unpaid] = await Promise.all([
     prisma.partner.findMany({
+      where: includeInstructors ? {} : { OR: [{ userId: null }, { user: { role: { not: 'INSTRUCTOR' } } }] },
       orderBy: [{ logoOrder: 'asc' }, { name: 'asc' }],
       include: {
         user: { select: { id: true, email: true, role: true, status: true, mustChangePassword: true } },
@@ -84,7 +86,7 @@ async function listPartners() {
   }));
 }
 
-partnersAdminRouter.get('/partners', h(async (_req, res) => res.json(await listPartners())));
+partnersAdminRouter.get('/partners', h(async (req, res) => res.json(await listPartners(req.query.include === 'instructors'))));
 
 partnersAdminRouter.post(
   '/partners',

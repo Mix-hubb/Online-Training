@@ -97,7 +97,7 @@ Public layout has Header (logo, Courses, My learning, bell, avatar; logged-out s
 - `/admin/grading` queue + grading screen
 - `/admin/landing` banners (add, replace, delete, reorder, show/hide), home text, section visibility, footer/company info
 - `/admin/taxonomy` categories and tags CRUD
-- `/admin/users` list, ban/unban (no role change in v1)
+- `/admin/users` list, ban/unban (no role change in v1; learners and admins only, see 18)
 - `/admin/certificate` template editor with live preview
 - `/admin/audit` audit log with filters
 
@@ -293,3 +293,13 @@ Ledger percent snapshot, payout covers only unpaid entries, max 2 instructors, i
 - Learner: `GET|PUT|DELETE /me/courses/:courseId/review` (`GET` -> `{ canReview, review }`).
 - Admin: `GET /admin/reviews?courseId&status&rating&q&page`, `PATCH /admin/reviews/:id { status, reason? }`, `DELETE /admin/reviews/:id`.
 - Tests (`api/tests/reviews.test.ts`): completed-only, one per course, validation, public summary and short names, hide/show/delete with audit, hidden stays hidden on edit, non-admin forbidden, own delete.
+
+## 18. Client change request (2026-11-23) — admin Instructors page (overrides earlier sections)
+- New admin page **`/admin/instructors`** (sidebar "Instructors", above Partners). Instructors are no longer shown or managed on `/admin/users` or `/admin/partners`.
+  - Lists every `INSTRUCTOR` login: name, email, the courses they teach with each course's share, unpaid balance, status.
+  - **Add instructor** (name + email): new email -> `INSTRUCTOR` login, `emailVerifiedAt` set, `mustChangePassword = true`, temporary password shown **once** (same rules as partner logins, 15.9). If the email belongs to a learner the API answers `ACCOUNT_EXISTS`; the admin confirms, then the learner is promoted and keeps their password. Partner or admin emails are refused.
+  - Reset password (fallback; "Forgot password" first), ban/unban, remove the role (only when no course is assigned).
+  - Courses and shares are still set in the course editor's Instructors tab.
+- `/admin/users` shows learners and admins only (`GET /admin/users?roles=USER,ADMIN`).
+- `/admin/partners` shows co-investors only. Instructor revenue rows are hidden there (`GET /admin/partners`; `?include=instructors` returns them, used by the revenue report filter).
+- API: `GET /admin/instructors?q&status&page`, `POST /admin/instructors { name, email, promoteExisting? }`, `POST /admin/instructors/:id/reset-password`. Audit: `instructor.account_create`, `user.make_instructor`, `instructor.password_reset`. Tests: `api/tests/instructor-accounts.test.ts`.

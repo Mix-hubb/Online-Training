@@ -15,6 +15,7 @@ const items = computed(() => [
   { to: '/admin/grading', title: 'Grading', count: counts.value.grading },
   { to: '/admin/support', title: 'Support inbox', count: counts.value.support },
   { to: '/admin/payments/review', title: 'Bank slips', count: counts.value.slips },
+  { to: '/admin/instructors', title: 'Instructors' },
   { to: '/admin/partners', title: 'Partners' },
   { to: '/admin/revenue', title: 'Revenue share' },
   { to: '/admin/landing', title: 'Landing page' },

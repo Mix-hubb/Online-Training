@@ -45,7 +45,7 @@ async function loadAll() {
 }
 onMounted(async () => {
   void loadAll();
-  partners.value = await partnersApi.list();
+  partners.value = await partnersApi.list(true);
   courses.value = (await coursesApi.list({ page: 1 })).items;
 });
 watch(q, loadReport);

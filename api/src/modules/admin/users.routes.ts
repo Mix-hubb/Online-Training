@@ -1,5 +1,6 @@
 // Users. Role changes only through the instructor / partner actions.
-//   GET  /admin/users?q&status&role&page
+//   GET  /admin/users?q&status&role&roles&page   roles = comma list, e.g. USER,ADMIN (the Users page:
+//        instructors and partners have their own pages)
 //   GET  /admin/users/:id        (enrollments, orders)
 //   POST /admin/users/:id/ban
 //   POST /admin/users/:id/unban
@@ -28,13 +29,18 @@ usersAdminRouter.get(
           q: z.string().optional(),
           status: z.enum(['ACTIVE', 'BANNED']).optional(),
           role: z.enum(['USER', 'INSTRUCTOR', 'PARTNER', 'ADMIN']).optional(),
+          roles: z
+            .string()
+            .transform((s) => s.split(',').filter(Boolean))
+            .pipe(z.array(z.enum(['USER', 'INSTRUCTOR', 'PARTNER', 'ADMIN'])))
+            .optional(),
         })
         .passthrough(),
     );
     const p = parsePage(req.query);
     const where: Prisma.UserWhereInput = {
       ...(q.status ? { status: q.status } : {}),
-      ...(q.role ? { role: q.role } : {}),
+      ...(q.role ? { role: q.role } : q.roles?.length ? { role: { in: q.roles } } : {}),
       ...(q.q ? { OR: [{ email: { contains: q.q, mode: 'insensitive' } }, { name: { contains: q.q, mode: 'insensitive' } }] } : {}),
     };
     const [rows, total] = await Promise.all([

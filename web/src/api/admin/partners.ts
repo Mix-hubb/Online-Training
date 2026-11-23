@@ -26,7 +26,8 @@ export interface PartnerInput {
   userId?: string | null;
   sharePercentBp?: number;
 }
-export const list = () => get<PartnerRow[]>('/admin/partners');
+/** Instructors' revenue rows are left out unless asked for (they live on the Instructors page). */
+export const list = (includeInstructors = false) => get<PartnerRow[]>('/admin/partners', includeInstructors ? { include: 'instructors' } : undefined);
 export const create = (p: PartnerInput) => post<PartnerRow>('/admin/partners', p);
 export const update = (id: string, p: Partial<PartnerInput>) => patch<PartnerRow>(`/admin/partners/${id}`, p);
 export const remove = (id: string) => del(`/admin/partners/${id}`);
