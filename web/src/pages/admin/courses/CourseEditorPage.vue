@@ -42,8 +42,13 @@ watch(
   { immediate: true },
 );
 async function onSaved(c: api.AdminCourse) {
-  if (isNew.value) await router.replace(`/admin/courses/${c.id}`);
-  course.value = await api.getOne(c.id);
+  // New course: stay in the editor (next step is adding lessons). Existing course: back to the list.
+  if (isNew.value) {
+    await router.replace(`/admin/courses/${c.id}`);
+    course.value = await api.getOne(c.id);
+    return;
+  }
+  await router.push({ path: '/admin/courses', state: { savedCourse: c.title } });
 }
 async function setStatus(s: CourseStatus) {
   err.value = '';

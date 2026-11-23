@@ -22,6 +22,10 @@ const busy = ref(false);
 const err = ref('');
 const pinned = ref<api.PinnedCourse[]>([]);
 const pinBusy = ref(false);
+// Set by the course editor after "Save changes".
+const savedToast = ref(typeof history.state?.savedCourse === 'string' ? `Saved changes to "${history.state.savedCourse}".` : '');
+// Shown once: a reload or Back must not show it again.
+if (savedToast.value) history.replaceState({ ...history.state, savedCourse: undefined }, '');
 async function load() {
   data.value = await api.list({ ...q.value, category: q.value.category || undefined });
 }
@@ -211,6 +215,7 @@ async function doDelete() {
     <ConfirmDialog v-model="confirm" title="Delete this course?" confirm-label="Delete" danger :loading="busy" @confirm="doDelete">
       <strong>{{ toDelete?.title }}</strong> and its lessons will be removed. This cannot be undone.
     </ConfirmDialog>
+    <v-snackbar :model-value="!!savedToast" :timeout="4000" color="success" @update:model-value="savedToast = ''">{{ savedToast }}</v-snackbar>
   </div>
 </template>
 
