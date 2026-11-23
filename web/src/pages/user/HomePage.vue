@@ -34,6 +34,8 @@ const failed = ref(false);
 const categories = ref<Taxon[]>([]);
 const tags = ref<Taxon[]>([]);
 const cont = ref<MyCourse[]>([]);
+/** Continue learning shows one row (3 cards, 2 on smaller screens); the rest are on My learning ("See more"). */
+const CONT_MAX = 3;
 const mine = ref<MyCourse[]>([]);
 const mineById = computed(() => new Map(mine.value.map((m) => [m.course.id, m])));
 const learner = computed(() => !!auth.user && auth.user.role !== 'PARTNER');
@@ -95,12 +97,13 @@ function clear() {
     <HeroBanner :banners="landing?.banners ?? []" :texts="texts" />
 
     <section v-if="learner && cont.length" aria-labelledby="continue-h" class="d-flex flex-column ga-4">
-      <div class="d-flex flex-column ga-1">
+      <div class="sec-head">
         <h2 id="continue-h" class="h2">Continue learning</h2>
+        <router-link v-if="cont.length > CONT_MAX - 1" to="/profile" class="see-more" :class="{ 'narrow-only': cont.length === CONT_MAX }">See more <v-icon icon="mdi-arrow-right" size="18" /></router-link>
       </div>
-      <div class="row-wrap two">
+      <div class="row-wrap">
         <router-link
-          v-for="c in cont.slice(0, 4)"
+          v-for="c in cont.slice(0, CONT_MAX)"
           :key="c.enrollmentId"
           :to="`/learn/${c.course.slug}${c.lastLesson ? `?lesson=${c.lastLesson.id}` : ''}`"
           class="resume panel"
@@ -334,8 +337,36 @@ function clear() {
   outline: 2px solid var(--ot-hl);
   outline-offset: 2px;
 }
-.row-wrap.two {
-  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+.row-wrap {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.see-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ot-accent);
+  text-decoration: none;
+}
+.see-more:hover {
+  text-decoration: underline;
+}
+@media (min-width: 1101px) {
+  .see-more.narrow-only {
+    display: none;
+  }
+}
+@media (max-width: 1100px) {
+  .row-wrap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .row-wrap > :nth-child(3) {
+    display: none;
+  }
 }
 .resume-thumb {
   flex: none;
@@ -433,7 +464,7 @@ function clear() {
   .resume-thumb {
     display: none;
   }
-  .row-wrap.two {
+  .row-wrap {
     grid-template-columns: 1fr;
   }
   .grid {
