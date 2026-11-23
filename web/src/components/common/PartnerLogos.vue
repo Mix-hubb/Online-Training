@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Partner logo strip: logos straight on the page background, no panel or tile. Grey until hovered or focused,
-// then the logo shows its real colors. Only partners with showLogo, ordered by logoOrder (API).
+// then the logo shows its real colors. When they all fit on screen they sit still in the middle. Only partners with showLogo, ordered by logoOrder (API).
 // Scrolls slowly and without stopping, but only when the logos do not fit in the panel; if they fit, it stays still.
 // Speed is fixed in px per second, so it looks the same with few or many partners.
 // Client asked that it never stops: no pause on hover, and it keeps moving even with "reduce motion" on (slow speed).
@@ -36,7 +36,7 @@ watch(
 </script>
 
 <template>
-  <section ref="box" class="marq" aria-label="Our partners">
+  <section ref="box" class="marq" :class="{ still: !moving }" aria-label="Our partners">
     <div class="track" :class="{ moving }" :style="{ animationDuration: duration }">
       <!-- Two identical copies when moving: sliding by one copy (-50%) loops without a jump. -->
       <div v-for="copy in moving ? 2 : 1" :key="copy" :ref="copy === 1 ? (el) => (group = el as HTMLElement) : undefined" class="group" :aria-hidden="copy > 1 ? 'true' : undefined">
@@ -66,6 +66,9 @@ watch(
   height: 72px;
   display: flex;
   align-items: center;
+}
+.marq.still {
+  justify-content: center;
 }
 .track {
   display: flex;
