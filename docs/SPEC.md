@@ -309,3 +309,12 @@ Ledger percent snapshot, payout covers only unpaid entries, max 2 instructors, i
 - Stats count **shown** reviews only (what learners see); hidden reviews are only counted in "Hidden". They follow the course filter.
 - Clicking a star row, a course, or "Hidden" sets the list filter.
 - API: `GET /admin/reviews/stats?courseId` -> `{ average, count, distribution, hidden, last30Days { count, average }, byCourse[] }`. Test in `api/tests/reviews.test.ts`.
+
+## 20. Performance pass (2026-11-23)
+- **Uploaded images are shrunk** (`api/src/lib/images.ts`, sharp): max box per kind (logo 640x320, cover 1600, banner 1920, avatar 512, chat/slip 2000), never enlarged, EXIF rotation applied, metadata dropped. Logos and signatures stay PNG/JPG (certificate PDF uses pdf-lib); everything else is stored as WebP. A broken image is a 415. `api/scripts/shrink-uploads.ts` shrinks files uploaded before this (local storage; dry run by default).
+- **Icons are SVG** from `@mdi/js`, not the MDI web font. `web/scripts/gen-icons.mjs` collects every `mdi-xxx` name in `src/` into `src/plugins/icons.generated.ts` (runs before dev/build; `npm run lint` fails if it is stale). After adding a new icon name, run `npm run icons` or restart dev.
+- **hls.js is loaded only when a video plays** (own chunk), not with the lesson page.
+- **API:** gzip (`compression`), security headers (`helmet`, no CSP; `/files` images allowed cross-origin), JSON body limit 1 MB except the base64 image routes (`UPLOAD_ROUTES` in `app.ts`, 25 MB). Too large -> 413, broken JSON -> 400.
+- **Support inbox:** unread counts for all threads in one query (was one per thread on every 15 s refresh).
+- **Indexes:** `Enrollment(courseId)`, `Order(status, paidAt)`, `RevenueEntry(createdAt)`.
+- **Revenue report:** the chart uses per-day totals from the API (`daily`, grouped in the viewer's time zone `tz`), over all entries. The table shows the latest 1,000 entries and says so when there are more; CSV export has every entry.

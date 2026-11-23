@@ -1,9 +1,22 @@
 // Light theme (white + muted blue). Colors mirror the design tokens in styles/main.css (the source of truth).
 // Corners and shadows come from the main.css tokens: 8px cards, 6px controls, 4px labels.
 import 'vuetify/styles';
-import { createVuetify } from 'vuetify';
+import { h } from 'vue';
+import { createVuetify, type IconProps } from 'vuetify';
+import { aliases, mdi } from 'vuetify/iconsets/mdi-svg';
+import { ICON_PATHS } from './icons.generated';
+
+// icon="mdi-star" -> the SVG path of mdiStar (only the icons used in src/, see scripts/gen-icons.mjs).
+const mdiByName = {
+  component: (props: IconProps) => {
+    const name = String(props.icon);
+    if (import.meta.env.DEV && !ICON_PATHS[name]) console.warn(`[icons] "${name}" is not in icons.generated.ts: restart the dev server`);
+    return h(mdi.component, { ...props, icon: ICON_PATHS[name] ?? '' });
+  },
+};
 
 export const vuetify = createVuetify({
+  icons: { defaultSet: 'mdi', aliases, sets: { mdi: mdiByName } },
   theme: {
     defaultTheme: 'otLight',
     themes: {

@@ -10,6 +10,7 @@ import { h } from '../../lib/async.js';
 import { AppError } from '../../lib/errors.js';
 import { body } from '../../lib/validate.js';
 import { decodeImage, fileInput, privateKey } from '../../lib/attachments.js';
+import { optimizeImage } from '../../lib/images.js';
 import { requireAuth, requireLearner } from '../../middleware/auth.js';
 import { storage } from '../../providers/storage/index.js';
 import { loadPurchasable, orderView } from './orders.service.js';
@@ -75,7 +76,7 @@ bankTransferRouter.post(
     if (order.slips.some((s) => s.status === 'PENDING')) {
       throw new AppError('VALIDATION_FAILED', 409, 'A slip is already waiting for review');
     }
-    const img = decodeImage(file);
+    const img = await optimizeImage(decodeImage(file), 'slip');
     const key = privateKey(`slips/${order.id}`, img.ext);
     await storage.putPrivate(key, img.buffer, img.mime);
     const slip = await prisma.paymentSlip.create({ data: { orderId: order.id, storageKey: key, mime: img.mime, sizeBytes: img.buffer.length } });

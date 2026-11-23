@@ -1,11 +1,13 @@
 // Express app wiring. Order matters:
-//  1. trust proxy (Railway), CORS with credentials, cookie-parser
+//  1. trust proxy (Railway), security headers (helmet), gzip, CORS with credentials, cookie-parser
 //  2. Stripe + crypto webhooks with express.raw()  <-- MUST be before express.json()
-//  3. express.json()
+//  3. express.json(): 25 MB only on the routes that take images as base64, 1 MB everywhere else
 //  4. public + user routes, /instructor (requireInstructor + assignment), /admin (requireAuth + requireAdmin)
 //  5. 404 + error handler (stable error codes)
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 
 import { errorHandler, notFound } from './middleware/error-handler.js';
@@ -28,10 +30,16 @@ import { filesRouter } from './modules/files/files.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { config } from './config.js';
 
+/** Routes whose JSON body carries base64 images (see lib/attachments.ts). */
+export const UPLOAD_ROUTES = /^\/(admin\/uploads|admin\/partners\/[^/]+\/logo|orders\/[^/]+\/slip|me\/threads\/support|courses\/[^/]+\/threads|threads\/[^/]+\/messages)$/;
+
 export function createApp() {
   const app = express();
 
   app.set('trust proxy', 1);
+  // JSON API: no CSP needed; public images under /files are shown on the web origin, so allow cross-origin reads.
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(compression());
   app.use(cors({ origin: config.WEB_URL, credentials: true }));
   app.use(cookieParser());
 
@@ -47,7 +55,10 @@ export function createApp() {
     });
   }
 
-  app.use(express.json({ limit: '25mb' })); // chat: 3 images x 5 MB as base64
+  // Image uploads arrive as base64 JSON (chat: 3 images x 5 MB). Only these routes get the big limit.
+  const bigJson = express.json({ limit: '25mb' });
+  const smallJson = express.json({ limit: '1mb' });
+  app.use((req, res, next) => (UPLOAD_ROUTES.test(req.path) ? bigJson : smallJson)(req, res, next));
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
 

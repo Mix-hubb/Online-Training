@@ -1,6 +1,6 @@
 // Revenue report + CSV export. Grouped per currency (never USD + THB together).
 // Rows NEVER include buyer identity (no user fields), so the same rows are safe for partners.
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../../db.js';
 
@@ -11,7 +11,22 @@ export const reportQuery = z.object({
   partner: z.string().optional(),
   currency: z.enum(['usd', 'thb']).optional(),
   status: z.enum(['UNPAID', 'PAID']).optional(),
+  /** Viewer's time zone (IANA, e.g. Asia/Bangkok) for the per-day chart; days are calendar days there. */
+  tz: z
+    .string()
+    .max(64)
+    .refine((v) => {
+      try {
+        new Intl.DateTimeFormat('en', { timeZone: v });
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .optional(),
 });
+/** Rows sent to the page table; the chart and totals always cover every entry, the CSV export too. */
+export const TABLE_ROWS = 1000;
 export type ReportQuery = z.infer<typeof reportQuery>;
 
 function whereOf(q: ReportQuery): Prisma.RevenueEntryWhereInput {
@@ -24,7 +39,7 @@ function whereOf(q: ReportQuery): Prisma.RevenueEntryWhereInput {
   };
 }
 
-export async function revenueRows(q: ReportQuery, limit = 5000) {
+export async function revenueRows(q: ReportQuery, limit?: number) {
   const rows = await prisma.revenueEntry.findMany({
     where: whereOf(q),
     orderBy: { createdAt: 'desc' },
@@ -49,6 +64,32 @@ export async function revenueRows(q: ReportQuery, limit = 5000) {
     status: r.status,
     payout: r.payout,
   }));
+}
+
+/** Number of entries matching the filters (the table shows at most TABLE_ROWS of them). */
+export const countRows = (q: ReportQuery) => prisma.revenueEntry.count({ where: whereOf(q) });
+
+/**
+ * Totals per calendar day and currency, computed in the database (2026-11-23: the chart used to add up the
+ * table rows in the browser, so it silently missed everything past the row limit).
+ */
+export async function daily(q: ReportQuery): Promise<{ day: string; currency: string; amountMinor: number; entries: number }[]> {
+  const tz = q.tz ?? 'UTC';
+  const cond: Prisma.Sql[] = [Prisma.sql`TRUE`];
+  if (q.partner) cond.push(Prisma.sql`"partnerId" = ${q.partner}`);
+  if (q.course) cond.push(Prisma.sql`"courseId" = ${q.course}`);
+  if (q.currency) cond.push(Prisma.sql`"currency" = ${q.currency}`);
+  if (q.status) cond.push(Prisma.sql`"status" = ${q.status}::"EntryStatus"`);
+  if (q.from) cond.push(Prisma.sql`"createdAt" >= ${q.from}`);
+  if (q.to) cond.push(Prisma.sql`"createdAt" <= ${q.to}`);
+  const rows = await prisma.$queryRaw<{ day: string; currency: string; amount: bigint; entries: number }[]>`
+    SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS day,
+           "currency", SUM("amountMinor") AS amount, COUNT(*)::int AS entries
+    FROM "RevenueEntry"
+    WHERE ${Prisma.join(cond, ' AND ')}
+    GROUP BY 1, 2
+    ORDER BY 1, 2`;
+  return rows.map((r) => ({ day: r.day, currency: r.currency, amountMinor: Number(r.amount), entries: Number(r.entries) }));
 }
 
 export async function summary(q: ReportQuery) {

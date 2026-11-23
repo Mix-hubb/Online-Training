@@ -92,6 +92,25 @@ describe('revenue ledger', () => {
     expect(csv.text.split('\n')[0]).toContain('share_amount');
   });
 
+  it('chart totals per day come from the database, in the viewer time zone, beyond the table limit', async () => {
+    const { buyer, admin, c, p } = await setup();
+    const o1 = await paidOrder(buyer.id, c.id, 10000, 'usd');
+    const b2 = await makeUser();
+    const o2 = await paidOrder(b2.id, c.id, 10000, 'usd');
+    // 20:00 UTC on 17 Nov is already 18 Nov in Bangkok (UTC+7); 10:00 UTC on 18 Nov is 18 Nov too.
+    await prisma.revenueEntry.updateMany({ where: { orderId: o1.id }, data: { createdAt: new Date('2026-11-17T20:00:00Z') } });
+    await prisma.revenueEntry.updateMany({ where: { orderId: o2.id }, data: { createdAt: new Date('2026-11-18T10:00:00Z') } });
+
+    const bkk = (await as(admin.id).get(`/admin/revenue?partner=${p.id}&tz=Asia/Bangkok`)).body;
+    expect(bkk.daily).toEqual([{ day: '2026-11-18', currency: 'usd', amountMinor: 5000, entries: 2 }]);
+    expect(bkk.total).toBe(2);
+    const utc = (await as(admin.id).get(`/admin/revenue?partner=${p.id}`)).body;
+    expect(utc.daily.map((d: { day: string }) => d.day)).toEqual(['2026-11-17', '2026-11-18']);
+    const ranged = (await as(admin.id).get(`/admin/revenue?partner=${p.id}&from=2026-11-18T00:00:00Z&to=2026-11-18T23:59:59Z&status=UNPAID`)).body;
+    expect(ranged.daily).toEqual([{ day: '2026-11-18', currency: 'usd', amountMinor: 2500, entries: 1 }]);
+    expect((await as(admin.id).get('/admin/revenue?tz=Not/AZone')).status).toBe(400);
+  });
+
   it('all partners together over 100% are refused', async () => {
     const { admin, p } = await setup(); // 25%
     const create = await as(admin.id).post('/admin/partners').send({ name: 'Big', sharePercentBp: 7600 });

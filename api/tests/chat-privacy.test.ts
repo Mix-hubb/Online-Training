@@ -37,6 +37,23 @@ describe('chat privacy', () => {
     expect(mine.body[0].unread).toBe(1);
   });
 
+  it('unread counts for staff and learner (one query for the whole inbox)', async () => {
+    const admin = await makeUser('ADMIN');
+    const a = await makeUser();
+    const b = await makeUser();
+    const ta = await as(a.id).post('/me/threads/support').send({ subject: 'A', body: 'first' });
+    await as(a.id).post(`/threads/${ta.body.id}/messages`).send({ body: 'second' });
+    const tb = await as(b.id).post('/me/threads/support').send({ subject: 'B', body: 'only' });
+    const unreadOf = async () => Object.fromEntries((await as(admin.id).get('/admin/threads')).body.map((t: { id: string; unread: number }) => [t.id, t.unread]));
+    expect(await unreadOf()).toEqual({ [ta.body.id]: 2, [tb.body.id]: 1 });
+
+    await as(admin.id).post(`/threads/${ta.body.id}/read`);
+    await as(admin.id).post(`/threads/${ta.body.id}/messages`).send({ body: 'reply' });
+    expect((await unreadOf())[ta.body.id]).toBe(0); // staff's own reply is not unread for staff
+    expect((await as(a.id).get('/me/threads')).body[0].unread).toBe(1);
+    expect((await as(admin.id).get('/admin/threads?unread=true')).body.map((t: { id: string }) => t.id)).toEqual([tb.body.id]);
+  });
+
   it('3 images max, 5 MB each, images only', async () => {
     const u = await makeUser();
     const t = await as(u.id).post('/me/threads/support').send({ subject: 'S', body: 'hi' });

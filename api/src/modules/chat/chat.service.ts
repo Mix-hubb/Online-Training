@@ -8,6 +8,7 @@ import { prisma } from '../../db.js';
 import { AppError } from '../../lib/errors.js';
 import { notify } from '../../lib/notify.js';
 import { decodeImages, fileInput, privateKey } from '../../lib/attachments.js';
+import { optimizeImage } from '../../lib/images.js';
 import { storage } from '../../providers/storage/index.js';
 
 export const ATTACHMENT_URL_TTL = 300;
@@ -47,21 +48,33 @@ const threadInclude = {
 
 type ThreadRow = Prisma.SupportThreadGetPayload<{ include: typeof threadInclude }>;
 
-async function unreadFor(t: SupportThread, side: Side) {
-  const since = side === 'learner' ? t.userReadAt : t.staffReadAt;
-  return prisma.threadMessage.count({
-    where: {
-      threadId: t.id,
-      ...(since ? { createdAt: { gt: since } } : {}),
-      senderId: side === 'learner' ? { not: t.userId } : t.userId,
-    },
-  });
+/**
+ * Unread messages per thread, in ONE query (2026-11-23: was one count per thread, up to 200 queries on every
+ * 15-second inbox refresh). Learner: messages from staff since userReadAt. Staff: messages from the learner since staffReadAt.
+ */
+async function unreadCounts(ids: string[], side: Side): Promise<Map<string, number>> {
+  if (!ids.length) return new Map();
+  const rows =
+    side === 'learner'
+      ? await prisma.$queryRaw<{ id: string; n: number }[]>`
+          SELECT m."threadId" AS id, COUNT(*)::int AS n
+          FROM "ThreadMessage" m JOIN "SupportThread" t ON t.id = m."threadId"
+          WHERE m."threadId" = ANY(${ids}) AND m."senderId" <> t."userId"
+            AND (t."userReadAt" IS NULL OR m."createdAt" > t."userReadAt")
+          GROUP BY m."threadId"`
+      : await prisma.$queryRaw<{ id: string; n: number }[]>`
+          SELECT m."threadId" AS id, COUNT(*)::int AS n
+          FROM "ThreadMessage" m JOIN "SupportThread" t ON t.id = m."threadId"
+          WHERE m."threadId" = ANY(${ids}) AND m."senderId" = t."userId"
+            AND (t."staffReadAt" IS NULL OR m."createdAt" > t."staffReadAt")
+          GROUP BY m."threadId"`;
+  return new Map(rows.map((r) => [r.id, Number(r.n)]));
 }
 
 export async function threadList(where: Prisma.SupportThreadWhereInput, side: Side) {
   const rows: ThreadRow[] = await prisma.supportThread.findMany({ where, include: threadInclude, orderBy: { lastMessageAt: 'desc' }, take: 200 });
-  return Promise.all(
-    rows.map(async (t) => ({
+  const unread = await unreadCounts(rows.map((t) => t.id), side);
+  return rows.map((t) => ({
       id: t.id,
       type: t.type,
       subject: t.subject,
@@ -70,9 +83,8 @@ export async function threadList(where: Prisma.SupportThreadWhereInput, side: Si
       learner: side === 'staff' ? t.user : undefined,
       course: t.course,
       lastMessage: t.messages[0] ? { body: t.messages[0].body.slice(0, 140), mine: undefined, at: t.messages[0].createdAt } : null,
-      unread: await unreadFor(t, side),
-    })),
-  );
+      unread: unread.get(t.id) ?? 0,
+    }));
 }
 
 export async function threadMessages(user: User, threadId: string) {
@@ -126,7 +138,7 @@ async function staffToNotify(thread: SupportThread): Promise<string[]> {
 }
 
 export async function postMessage(user: User, thread: SupportThread, side: Side, input: z.infer<typeof messageBody>) {
-  const images = decodeImages(input.attachments);
+  const images = await Promise.all(decodeImages(input.attachments).map((i) => optimizeImage(i, 'chat')));
   const keys: { key: string; mime: string; size: number; width?: number; height?: number }[] = [];
   for (const img of images) {
     const key = privateKey(`chat/${thread.id}`, img.ext);

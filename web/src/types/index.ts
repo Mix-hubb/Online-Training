@@ -310,6 +310,13 @@ export interface RevenueRow {
 }
 
 export type RevenueTotals = Record<string, { earned: number; paid: number; outstanding: number }>;
+/** One calendar day (in the viewer's time zone) and currency, summed by the API over ALL matching entries. */
+export interface RevenuePoint {
+  day: string; // YYYY-MM-DD
+  currency: string;
+  amountMinor: number;
+  entries: number;
+}
 
 export interface Payout {
   id: string;

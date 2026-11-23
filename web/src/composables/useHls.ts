@@ -1,25 +1,33 @@
 // Attaches an HLS stream to a <video>. Exposes quality levels (Auto + heights) and a setter (spec 15.5).
-import Hls from 'hls.js';
+// hls.js (~500 KB) is loaded only when a video actually plays, not with the lesson page (2026-11-23).
+import type Hls from 'hls.js';
 import { onBeforeUnmount, ref, type Ref } from 'vue';
+
+const hasMse = () => typeof window !== 'undefined' && ('MediaSource' in window || 'ManagedMediaSource' in window);
 
 export function useHls(video: Ref<HTMLVideoElement | null>) {
   let hls: Hls | null = null;
+  let token = 0; // a newer load() wins over one still waiting for hls.js
   const levels = ref<number[]>([]);
   const current = ref<number | 'auto'>('auto');
   const error = ref<string | null>(null);
 
   function destroy() {
+    token++;
     hls?.destroy();
     hls = null;
   }
 
-  function load(url: string, startAt = 0, allowed: number[] = []) {
+  async function load(url: string, startAt = 0, allowed: number[] = []) {
     destroy();
+    const mine = ++token;
     error.value = null;
     current.value = 'auto';
     const el = video.value;
     if (!el) return;
-    if (Hls.isSupported()) {
+    const Hls = hasMse() ? (await import('hls.js').catch(() => null))?.default : undefined;
+    if (mine !== token) return;
+    if (Hls?.isSupported()) {
       hls = new Hls({ startPosition: startAt > 0 ? startAt : -1 });
       hls.loadSource(url);
       hls.attachMedia(el);

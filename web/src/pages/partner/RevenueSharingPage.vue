@@ -69,10 +69,11 @@ watch(q, load);
         </p>
       </section>
     </template>
-    <RevenueChart :rows="rows" :period="period" :loading="loading" />
+    <RevenueChart :points="sum?.daily ?? []" :period="period" :loading="loading" />
     <section class="d-flex flex-column ga-3">
       <h2 class="section-title my-0">Entries</h2>
       <v-progress-linear v-if="loading" indeterminate color="primary" />
+      <p v-if="sum && sum.entries > rows.length" class="text-body-2 text-muted ma-0">Showing the latest {{ rows.length.toLocaleString() }} of {{ sum.entries.toLocaleString() }} entries. Export CSV has every entry.</p>
       <RevenueTable :rows="rows" />
     </section>
   </div>

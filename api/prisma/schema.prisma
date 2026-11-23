@@ -232,6 +232,7 @@ model Enrollment {
   cert     Certificate?
 
   @@unique([userId, courseId])
+  @@index([courseId]) // learners of a course (instructor + admin lists, counts)
 }
 
 model LessonProgress {
@@ -372,6 +373,7 @@ model Order {
   revenue RevenueEntry[]
 
   @@index([userId])
+  @@index([status, paidAt]) // dashboard "sales this month"
 }
 
 // ───────── Misc ─────────
@@ -492,6 +494,7 @@ model RevenueEntry {
 
   @@index([partnerId, status])
   @@index([orderId])
+  @@index([createdAt]) // revenue report + chart filter by date
 }
 
 enum EntryKind {

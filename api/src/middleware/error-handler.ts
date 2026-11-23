@@ -16,6 +16,15 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({ error: { code: 'VALIDATION_FAILED', message: 'Invalid input', issues: err.issues } });
     return;
   }
+  // express.json(): body over the route's limit, or not valid JSON.
+  if (err?.type === 'entity.too.large') {
+    res.status(413).json({ error: { code: 'VALIDATION_FAILED', message: 'Request is too large' } });
+    return;
+  }
+  if (err?.type === 'entity.parse.failed') {
+    res.status(400).json({ error: { code: 'VALIDATION_FAILED', message: 'Invalid JSON' } });
+    return;
+  }
   console.error(err);
   res.status(500).json({ error: { code: 'INTERNAL', message: 'Something went wrong' } });
 };

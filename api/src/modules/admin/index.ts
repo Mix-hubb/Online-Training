@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { h } from '../../lib/async.js';
 import { body } from '../../lib/validate.js';
 import { decodeImage, fileInput } from '../../lib/attachments.js';
+import { optimizeImage } from '../../lib/images.js';
 import { writeAudit } from '../../lib/audit.js';
 import { storage } from '../../providers/storage/index.js';
 import { dashboardRouter } from './dashboard.routes.js';
@@ -36,7 +37,7 @@ adminRouter.post(
   '/uploads',
   h(async (req, res) => {
     const input = body(req, z.object({ file: fileInput, kind: z.enum(['cover', 'banner', 'logo', 'signature', 'avatar', 'other']).default('other') }));
-    const img = decodeImage(input.file);
+    const img = await optimizeImage(decodeImage(input.file), input.kind);
     const url = await storage.putPublic(`${input.kind}/${crypto.randomUUID()}.${img.ext}`, img.buffer, img.mime);
     await writeAudit(req.user!.id, 'upload.create', 'Upload', null, { kind: input.kind, url });
     res.status(201).json({ url, width: img.width, height: img.height });

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 // Revenue share over the selected period: one bar per day (per month when the period is longer than 62 days).
 // One currency at a time (USD and THB are never added). Hover or keyboard (arrow keys) shows the value;
-// "Show table" lists the same numbers.
+// "Show table" lists the same numbers. Per-day sums come from the API (all entries, not only the table rows).
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { RevenueRow } from '@/types';
+import type { RevenuePoint } from '@/types';
 import { dayKey, monthKey, periodDays, type Period } from '@/utils/period';
 import { money, plural } from '@/utils/format';
 
-const props = defineProps<{ rows: RevenueRow[]; period: Period; loading?: boolean }>();
+const props = defineProps<{ points: RevenuePoint[]; period: Period; loading?: boolean }>();
 
 const CURRENCY_ORDER = ['usd', 'thb'];
 const currencies = computed(() => {
-  const set = new Set(props.rows.map((r) => r.currency));
+  const set = new Set(props.points.map((r) => r.currency));
   return [...CURRENCY_ORDER.filter((c) => set.has(c)), ...[...set].filter((c) => !CURRENCY_ORDER.includes(c)).sort()];
 });
 const currency = ref('usd');
@@ -58,13 +58,12 @@ const buckets = computed<Bucket[]>(() => {
       index.set(b.key, b);
     }
   }
-  for (const r of props.rows) {
+  for (const r of props.points) {
     if (r.currency !== currency.value) continue;
-    const at = new Date(r.date);
-    const b = index.get(monthly.value ? monthKey(at) : dayKey(at));
+    const b = index.get(monthly.value ? r.day.slice(0, 7) : r.day);
     if (b) {
       b.amount += r.amountMinor;
-      b.entries += 1;
+      b.entries += r.entries;
     }
   }
   return out;

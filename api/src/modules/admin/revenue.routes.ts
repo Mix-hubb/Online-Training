@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { h } from '../../lib/async.js';
 import { body, query } from '../../lib/validate.js';
 import { markAsPaid } from '../revenue/payout.service.js';
-import { balances, payoutsOf, reportQuery, revenueRows, summary, toCsv } from '../revenue/report.service.js';
+import { balances, countRows, daily, payoutsOf, reportQuery, revenueRows, summary, TABLE_ROWS, toCsv } from '../revenue/report.service.js';
 
 export const revenueAdminRouter = Router();
 
@@ -17,7 +17,8 @@ revenueAdminRouter.get(
   '/revenue',
   h(async (req, res) => {
     const q = query(req, reportQuery);
-    res.json({ summary: await summary(q), rows: await revenueRows(q, 1000) });
+    const [s, rows, total, days] = await Promise.all([summary(q), revenueRows(q, TABLE_ROWS), countRows(q), daily(q)]);
+    res.json({ summary: s, rows, total, daily: days });
   }),
 );
 

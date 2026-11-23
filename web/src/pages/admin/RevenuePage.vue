@@ -12,7 +12,7 @@ import * as api from '@/api/admin/revenue';
 import * as partnersApi from '@/api/admin/partners';
 import * as coursesApi from '@/api/admin/courses';
 import { errorMessage } from '@/api/client';
-import type { Payout, RevenueRow, RevenueTotals } from '@/types';
+import type { Payout, RevenuePoint, RevenueRow, RevenueTotals } from '@/types';
 import { money } from '@/utils/format';
 
 const tab = ref('ledger');
@@ -21,6 +21,8 @@ const f = ref<api.RevenueQuery>({ course: '', partner: '', currency: '', status:
 const q = computed(() => ({ ...f.value, ...periodQuery(period.value) }));
 const loadingReport = ref(false);
 const rows = ref<RevenueRow[]>([]);
+const points = ref<RevenuePoint[]>([]);
+const totalRows = ref(0);
 const sum = ref<RevenueTotals>({});
 const balances = ref<Awaited<ReturnType<typeof api.balances>>>([]);
 const payouts = ref<Payout[]>([]);
@@ -35,6 +37,8 @@ async function loadReport() {
   try {
     const r = await api.report(q.value);
     rows.value = r.rows;
+    points.value = r.daily;
+    totalRows.value = r.total;
     sum.value = r.summary;
   } finally {
     loadingReport.value = false;
@@ -96,8 +100,9 @@ async function markPaid() {
       </div>
       <div class="text-body-2 text-muted mt-n3">Showing {{ periodLabel(period) }}</div>
       <RevenueTotalsCards :totals="sum" />
-      <RevenueChart :rows="rows" :period="period" :loading="loadingReport" />
+      <RevenueChart :points="points" :period="period" :loading="loadingReport" />
       <div class="d-flex justify-end"><v-btn variant="outlined" prepend-icon="mdi-download" @click="api.csv(q)">Export CSV</v-btn></div>
+      <p v-if="totalRows > rows.length" class="text-body-2 text-muted ma-0">Showing the latest {{ rows.length.toLocaleString() }} of {{ totalRows.toLocaleString() }} entries. Totals and the chart include all of them; Export CSV has every entry.</p>
       <RevenueTable :rows="rows" show-partner />
     </template>
     <template v-else-if="tab === 'balances'">

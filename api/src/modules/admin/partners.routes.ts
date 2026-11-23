@@ -25,6 +25,7 @@ import { body, email } from '../../lib/validate.js';
 import { writeAudit } from '../../lib/audit.js';
 import { tempPassword } from '../../lib/tokens.js';
 import { decodeImage, fileInput } from '../../lib/attachments.js';
+import { optimizeImage } from '../../lib/images.js';
 import { storage } from '../../providers/storage/index.js';
 
 export const partnersAdminRouter = Router();
@@ -139,7 +140,7 @@ partnersAdminRouter.post(
   '/partners/:id/logo',
   h(async (req, res) => {
     const { file } = body(req, z.object({ file: fileInput }));
-    const img = decodeImage(file);
+    const img = await optimizeImage(decodeImage(file), 'logo');
     const url = await storage.putPublic(`logo/${crypto.randomUUID()}.${img.ext}`, img.buffer, img.mime);
     const p = await prisma.partner.update({ where: { id: req.params.id }, data: { logoUrl: url } }).catch(() => {
       throw new AppError('NOT_FOUND', 404);

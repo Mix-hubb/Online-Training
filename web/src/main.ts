@@ -6,7 +6,6 @@ import '@fontsource/inter/600.css';
 import '@fontsource/plus-jakarta-sans/600.css';
 import '@fontsource/plus-jakarta-sans/700.css';
 import '@fontsource/plus-jakarta-sans/800.css';
-import '@mdi/font/css/materialdesignicons.css';
 import './styles/main.css';
 
 import App from './App.vue';

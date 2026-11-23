@@ -10,7 +10,7 @@ import { h } from '../../lib/async.js';
 import { query } from '../../lib/validate.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { requirePartner } from '../../middleware/roles.js';
-import { payoutsOf, reportQuery, revenueRows, summary, toCsv } from '../revenue/report.service.js';
+import { countRows, daily, payoutsOf, reportQuery, revenueRows, summary, TABLE_ROWS, toCsv } from '../revenue/report.service.js';
 
 export const partnerRouter = Router();
 const auth = [requireAuth, requirePartner];
@@ -49,6 +49,8 @@ export async function partnerSummary(partnerId: string, q: ReturnType<typeof own
   });
   return {
     totals: await summary(q),
+    daily: await daily(q),
+    entries: await countRows(q),
     sharePercentBp: partner.sharePercentBp,
     courseShares: assigned.map((a) => ({ ...a.course, sharePercentBp: a.sharePercentBp })),
     courses,
@@ -64,7 +66,7 @@ partnerRouter.get(
   }),
 );
 
-partnerRouter.get('/partner/revenue', ...auth, h(async (req, res) => res.json(stripPartner(await revenueRows(ownQuery(req))))));
+partnerRouter.get('/partner/revenue', ...auth, h(async (req, res) => res.json(stripPartner(await revenueRows(ownQuery(req), TABLE_ROWS)))));
 
 partnerRouter.get(
   '/partner/revenue.csv',

@@ -43,12 +43,14 @@ export function periodDays(p: Period): { start: Date; end: Date } | null {
   return a <= b ? { start: a, end: b } : { start: b, end: a };
 }
 
-/** { from, to } instants for the API (empty strings when the period is incomplete). */
-export function periodQuery(p: Period): { from: string; to: string } {
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/** { from, to } instants for the API (empty when the period is incomplete), plus the viewer's time zone for per-day totals. */
+export function periodQuery(p: Period): { from: string; to: string; tz: string } {
   const d = periodDays(p);
-  if (!d) return { from: '', to: '' };
+  if (!d) return { from: '', to: '', tz: TZ };
   const end = new Date(d.end.getFullYear(), d.end.getMonth(), d.end.getDate(), 23, 59, 59, 999);
-  return { from: d.start.toISOString(), to: end.toISOString() };
+  return { from: d.start.toISOString(), to: end.toISOString(), tz: TZ };
 }
 
 const fmtMonth = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });

@@ -6,7 +6,7 @@ import { prisma } from '../../db.js';
 import { h } from '../../lib/async.js';
 import { AppError } from '../../lib/errors.js';
 import { query } from '../../lib/validate.js';
-import { payoutsOf, reportQuery, revenueRows, toCsv } from '../revenue/report.service.js';
+import { payoutsOf, reportQuery, revenueRows, TABLE_ROWS, toCsv } from '../revenue/report.service.js';
 import { partnerSummary, stripPartner } from '../partner/partner.routes.js';
 
 export const instructorEarningsRouter = Router();
@@ -22,7 +22,7 @@ instructorEarningsRouter.get(
       linked: true,
       partner: { id: partner.id, name: partner.name },
       ...(await partnerSummary(partner.id, q)),
-      rows: stripPartner(await revenueRows(q)),
+      rows: stripPartner(await revenueRows(q, TABLE_ROWS)),
       payouts: payouts.map(({ partner: _p, createdBy: _c, ...r }) => r),
     });
   }),
