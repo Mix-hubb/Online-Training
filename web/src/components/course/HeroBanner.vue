@@ -1,33 +1,73 @@
 <script setup lang="ts">
-// Home hero (mockup Main): headline text on the left, the admin-uploaded banner image on the right.
-// With several banners it rotates every 7 s (paused on hover/focus and for reduced motion), with
-// round previous/next buttons bottom-left and dots bottom-right.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+// Home hero (mockup Main): headline text on the left, the admin-uploaded banner images on the right.
+// With several banners they slide on their own every 6 s, in order, and loop back to the first by sliding
+// forward onto a copy of it (no rewind). The shown image zooms out slowly; the active dot fills up as a timer.
+// Paused while the pointer or keyboard focus is on the hero and while the tab is hidden.
+// Reduced motion: still rotates, but switches without sliding or zooming.
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { Landing } from '@/types';
 
 const props = defineProps<{ banners: Landing['banners']; texts: Record<string, string> }>();
-const i = ref(0);
+
+const INTERVAL_MS = 6000;
+const pos = ref(0); // slide position on the track; pos === n is the copy of the first banner
+const animate = ref(true);
 const paused = ref(false);
+const elapsed = ref(0);
+
+const n = computed(() => props.banners.length);
+const many = computed(() => n.value > 1);
+const i = computed(() => (n.value ? pos.value % n.value : 0));
+const slides = computed(() => (many.value ? [...props.banners, props.banners[0]] : props.banners));
 const cur = computed(() => props.banners[i.value] ?? null);
-const many = computed(() => props.banners.length > 1);
 const featured = computed(() => cur.value?.linkUrl ?? null);
 const internal = computed(() => !!featured.value && featured.value.startsWith('/'));
+const progress = computed(() => Math.min(1, elapsed.value / INTERVAL_MS));
 const perks = [
   { icon: 'mdi-play-circle-outline', label: 'Video lessons' },
   { icon: 'mdi-clipboard-check-outline', label: 'Final test' },
   { icon: 'mdi-certificate-outline', label: 'Certificate' },
 ];
 
-function go(d: number) {
-  const n = props.banners.length;
-  if (n) i.value = (i.value + d + n) % n;
+/** Jump without animation (used to swap the first-banner copy for the real one). */
+async function jump(to: number) {
+  animate.value = false;
+  pos.value = to;
+  await nextTick();
+  void document.body.offsetHeight; // apply the jump before turning the transition back on
+  animate.value = true;
 }
+
+async function go(d: 1 | -1) {
+  if (!many.value) return;
+  elapsed.value = 0;
+  if (d === 1) {
+    if (pos.value >= n.value) await jump(0);
+    pos.value += 1;
+  } else {
+    if (pos.value <= 0) await jump(n.value);
+    pos.value -= 1;
+  }
+}
+
+function goTo(k: number) {
+  elapsed.value = 0;
+  pos.value = k;
+}
+
+/** After sliding onto the copy of the first banner, swap in the real first one. */
+function onSlid(e: TransitionEvent) {
+  if (e.target === e.currentTarget && e.propertyName === 'transform' && pos.value === n.value) void jump(0);
+}
+
 let timer: ReturnType<typeof setInterval> | undefined;
+const TICK = 100;
 onMounted(() => {
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   timer = setInterval(() => {
-    if (many.value && !paused.value) go(1);
-  }, 7000);
+    if (!many.value || paused.value || document.hidden) return;
+    elapsed.value += TICK;
+    if (elapsed.value >= INTERVAL_MS) void go(1);
+  }, TICK);
 });
 onBeforeUnmount(() => clearInterval(timer));
 </script>
@@ -47,20 +87,30 @@ onBeforeUnmount(() => clearInterval(timer));
       </ul>
     </div>
     <div class="art">
-      <Transition name="fade" mode="out-in">
-        <img v-if="cur" :key="cur.id" :src="cur.imageUrl" :alt="cur.altText ?? ''" />
-        <span v-else class="ph" aria-hidden="true" />
-      </Transition>
-    </div>
-    <template v-if="many">
-      <button type="button" class="nav prev" aria-label="Previous banner" @click="go(-1)">
+      <div v-if="slides.length" class="track" :class="{ animate }" :style="{ transform: `translateX(${-pos * 100}%)` }" @transitionend="onSlid">
+        <div
+          v-for="(b, k) in slides"
+          :key="`${b.id}-${k}`"
+          class="slide"
+          :class="{ active: k === pos }"
+          :aria-hidden="k !== pos ? 'true' : undefined"
+        >
+          <img :src="b.imageUrl" :alt="k === pos ? b.altText ?? '' : ''" :loading="k === 0 ? 'eager' : 'lazy'" />
+        </div>
+      </div>
+      <span v-else class="ph" aria-hidden="true" />
+      <button v-if="many" type="button" class="nav prev" aria-label="Previous banner" @click="go(-1)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
       </button>
-      <button type="button" class="nav next" aria-label="Next banner" @click="go(1)">
+      <button v-if="many" type="button" class="nav next" aria-label="Next banner" @click="go(1)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
       </button>
+    </div>
+    <template v-if="many">
       <div class="dots">
-        <button v-for="(b, k) in banners" :key="b.id" type="button" :class="{ on: k === i }" :aria-label="`Show banner ${k + 1}`" :aria-current="k === i ? 'true' : undefined" @click="i = k" />
+        <button v-for="(b, k) in banners" :key="b.id" type="button" :class="{ on: k === i }" :aria-label="`Show banner ${k + 1}`" :aria-current="k === i ? 'true' : undefined" @click="goTo(k)">
+          <span v-if="k === i" class="fill" :style="{ transform: `scaleX(${progress})` }" />
+        </button>
       </div>
     </template>
   </section>
@@ -92,7 +142,7 @@ onBeforeUnmount(() => clearInterval(timer));
 .text {
   position: relative;
   flex: 1 1 420px;
-  padding: 56px 48px 88px;
+  padding: 56px 48px 64px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -174,34 +224,68 @@ p {
   position: relative;
   background: var(--ot-thumb);
 }
-.art img {
+.art {
+  overflow: hidden;
+}
+.track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  will-change: transform;
+}
+/* Slow and smooth: eases in and out over 1.1 s. */
+.track.animate {
+  transition: transform 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.slide img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transform: scale(1.08);
+  transition: transform 7s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* The banner on show zooms out gently while it is visible. */
+.slide.active img {
+  transform: scale(1);
+}
+/* Previous / next: on the banner image, left and right edges, see-through until hovered. */
 .nav {
   position: absolute;
-  bottom: 16px;
+  top: 50%;
+  z-index: 1;
   width: 44px;
   height: 44px;
+  margin-top: -22px;
   border-radius: 22px;
-  border: 1px solid var(--ot-input-border);
-  background: var(--ot-bg);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(6px);
   color: var(--ot-text);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--ot-shadow-btn);
+  box-shadow: 0 2px 10px rgba(19, 36, 61, 0.15);
+  transition: background var(--ot-transition), transform var(--ot-transition);
+}
+.nav:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: scale(1.06);
 }
 .prev {
   left: 16px;
 }
 .next {
-  left: 68px;
+  right: 16px;
 }
 .dots {
   position: absolute;
@@ -234,17 +318,25 @@ p {
 .dots button:hover::before {
   background: var(--ot-muted);
 }
+.dots button.on {
+  width: 52px;
+}
 .dots button.on::before {
-  width: 24px;
+  width: 28px;
+  background: color-mix(in srgb, var(--ot-accent) 28%, transparent);
+}
+/* Timer: the active dot fills from left to right until the next banner. */
+.fill {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 28px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: var(--ot-radius-pill);
   background: var(--ot-accent);
-}
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.35s;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+  transform-origin: left center;
+  transition: transform 0.1s linear;
 }
 @media (max-width: 600px) {
   .text {
@@ -258,10 +350,13 @@ p {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fade-enter-active,
-  .fade-leave-active,
+  .track.animate,
+  .slide img,
   .dots button::before {
     transition: none;
+  }
+  .slide img {
+    transform: none;
   }
 }
 </style>
