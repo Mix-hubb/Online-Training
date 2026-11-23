@@ -7,6 +7,7 @@
 // animation effects are off), only the slow zoom is turned off.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { Landing } from '@/types';
+import { smoothScrollTo } from '@/utils/smoothScroll';
 
 const props = defineProps<{ banners: Landing['banners']; texts: Record<string, string> }>();
 
@@ -76,8 +77,8 @@ onBeforeUnmount(() => clearInterval(timer));
 function toCatalog() {
   const el = document.getElementById('catalog');
   if (!el) return;
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: 'smooth' });
   el.focus({ preventScroll: true });
+  void smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - 88);
 }
 </script>
 
