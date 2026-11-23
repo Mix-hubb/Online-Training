@@ -1,10 +1,13 @@
 <script setup lang="ts">
 // Revenue sharing (admin): ledger with filters + CSV, balances per partner and currency, mark as paid, payouts.
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import RevenueTotalsCards from '@/components/revenue/RevenueTotalsCards.vue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import PayoutsTable from '@/components/revenue/PayoutsTable.vue';
 import RevenueTable from '@/components/revenue/RevenueTable.vue';
+import RevenueChart from '@/components/revenue/RevenueChart.vue';
+import RevenuePeriod from '@/components/revenue/RevenuePeriod.vue';
+import { periodLabel, periodQuery, thisMonth, type Period } from '@/utils/period';
 import * as api from '@/api/admin/revenue';
 import * as partnersApi from '@/api/admin/partners';
 import * as coursesApi from '@/api/admin/courses';
@@ -13,7 +16,10 @@ import type { Payout, RevenueRow, RevenueTotals } from '@/types';
 import { money } from '@/utils/format';
 
 const tab = ref('ledger');
-const f = ref<api.RevenueQuery>({ from: '', to: '', course: '', partner: '', currency: '', status: '' });
+const period = ref<Period>(thisMonth());
+const f = ref<api.RevenueQuery>({ course: '', partner: '', currency: '', status: '' });
+const q = computed(() => ({ ...f.value, ...periodQuery(period.value) }));
+const loadingReport = ref(false);
 const rows = ref<RevenueRow[]>([]);
 const sum = ref<RevenueTotals>({});
 const balances = ref<Awaited<ReturnType<typeof api.balances>>>([]);
@@ -25,9 +31,14 @@ const busy = ref(false);
 const err = ref('');
 
 async function loadReport() {
-  const r = await api.report(f.value);
-  rows.value = r.rows;
-  sum.value = r.summary;
+  loadingReport.value = true;
+  try {
+    const r = await api.report(q.value);
+    rows.value = r.rows;
+    sum.value = r.summary;
+  } finally {
+    loadingReport.value = false;
+  }
 }
 async function loadAll() {
   await Promise.all([loadReport(), api.balances().then((b) => (balances.value = b)), api.payouts().then((p) => (payouts.value = p))]);
@@ -37,7 +48,7 @@ onMounted(async () => {
   partners.value = await partnersApi.list();
   courses.value = (await coursesApi.list({ page: 1 })).items;
 });
-watch(f, loadReport, { deep: true });
+watch(q, loadReport);
 async function markPaid() {
   const p = pay.value!;
   busy.value = true;
@@ -64,9 +75,8 @@ async function markPaid() {
       <button type="button" :aria-pressed="tab === 'payouts'" @click="tab = 'payouts'">Payouts</button>
     </div>
     <template v-if="tab === 'ledger'">
+      <RevenuePeriod v-model="period" />
       <div class="filters">
-        <div class="grow1"><label for="r-from" class="sr-only">From</label><input id="r-from" v-model="f.from" type="date" class="ot-input" /></div>
-        <div class="grow1"><label for="r-to" class="sr-only">To</label><input id="r-to" v-model="f.to" type="date" class="ot-input" /></div>
         <div class="grow1">
           <label for="r-p" class="sr-only">Partner</label>
           <select id="r-p" v-model="f.partner" class="ot-select"><option value="">All partners</option><option v-for="p in partners" :key="p.id" :value="p.id">{{ p.name }}</option></select>
@@ -84,8 +94,10 @@ async function markPaid() {
           <select id="r-s" v-model="f.status" class="ot-select"><option value="">All statuses</option><option value="UNPAID">Unpaid</option><option value="PAID">Paid</option></select>
         </div>
       </div>
+      <div class="text-body-2 text-muted mt-n3">Showing {{ periodLabel(period) }}</div>
       <RevenueTotalsCards :totals="sum" />
-      <div class="d-flex justify-end"><v-btn variant="outlined" prepend-icon="mdi-download" @click="api.csv(f)">Export CSV</v-btn></div>
+      <RevenueChart :rows="rows" :period="period" :loading="loadingReport" />
+      <div class="d-flex justify-end"><v-btn variant="outlined" prepend-icon="mdi-download" @click="api.csv(q)">Export CSV</v-btn></div>
       <RevenueTable :rows="rows" show-partner />
     </template>
     <template v-else-if="tab === 'balances'">

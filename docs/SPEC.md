@@ -250,6 +250,8 @@ Ledger percent snapshot, payout covers only unpaid entries, max 2 instructors, i
 - A partner is added once with ONE share of TOTAL revenue (all courses): `Partner.sharePercentBp` (basis points, 2500 = 25%). The sum over all partners must be <= 10000 (enforced on the server, under a lock). There is no inactive state: set a partner to 0% to stop its share.
 - `markOrderPaid()` writes one `RevenueEntry` per partner with a share > 0, snapshotting the percent on the entry. Changing a partner's percent later never changes existing entries. Entries are never edited or deleted.
 - Report filters (date range, course, partner, currency), CSV export, "Mark as paid" and per-currency reporting are unchanged.
+- Period picker (2026-11-23), admin and partner "Revenue sharing" pages: **Month** (default: this month, previous/next) or **Specific days** (from/to, one day allowed). The period scopes totals, chart, entries and CSV; days are the viewer's local calendar days.
+- Chart: share per day (per month when the period is over 62 days), one currency at a time (USD and THB never added), hover or arrow keys for values, and a table view.
 - Admin UI: the percentage is set on `/admin/partners` (create/edit). The course editor has no revenue-share tab.
 - ~~Open question: whether instructors still get a revenue share.~~ **Decided 2026-11-22:** yes, per assigned course:
   - `CourseInstructor.sharePercentBp` = the instructor's share of THAT course's sales, set by the admin in the course editor's Instructors tab (`POST|PATCH /admin/courses/:id/instructors[/:userId]`). The instructors of one course together <= 100%.
