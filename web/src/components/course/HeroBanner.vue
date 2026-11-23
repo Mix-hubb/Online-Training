@@ -3,7 +3,8 @@
 // With several banners they slide on their own every 6 s, in order, and loop back to the first by sliding
 // forward onto a copy of it (no rewind). The shown image zooms out slowly; the active dot fills up as a timer.
 // Paused while the pointer or keyboard focus is on the hero and while the tab is hidden.
-// Reduced motion: still rotates, but switches without sliding or zooming.
+// Reduced motion: the gentle slide stays (client asked for it; many Windows PCs report reduced motion when
+// animation effects are off), only the slow zoom is turned off.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { Landing } from '@/types';
 
@@ -233,9 +234,9 @@ p {
   display: flex;
   will-change: transform;
 }
-/* Slow and smooth: eases in and out over 1.1 s. */
+/* Gentle slide: starts softly and settles slowly. */
 .track.animate {
-  transition: transform 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide {
   position: relative;
@@ -350,7 +351,6 @@ p {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .track.animate,
   .slide img,
   .dots button::before {
     transition: none;
