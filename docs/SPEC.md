@@ -303,3 +303,9 @@ Ledger percent snapshot, payout covers only unpaid entries, max 2 instructors, i
 - `/admin/users` shows learners and admins only (`GET /admin/users?roles=USER,ADMIN`).
 - `/admin/partners` shows co-investors only. Instructor revenue rows are hidden there (`GET /admin/partners`; `?include=instructors` returns them, used by the revenue report filter).
 - API: `GET /admin/instructors?q&status&page`, `POST /admin/instructors { name, email, promoteExisting? }`, `POST /admin/instructors/:id/reset-password`. Audit: `instructor.account_create`, `user.make_instructor`, `instructor.password_reset`. Tests: `api/tests/instructor-accounts.test.ts`.
+
+## 19. Review stats on `/admin/reviews` (2026-11-23)
+- Top of the admin Reviews page: average rating (stars), shown reviews, last 30 days (count + average), hidden count; star breakdown 5..1 (bar + count + %); rating per course (all courses view only).
+- Stats count **shown** reviews only (what learners see); hidden reviews are only counted in "Hidden". They follow the course filter.
+- Clicking a star row, a course, or "Hidden" sets the list filter.
+- API: `GET /admin/reviews/stats?courseId` -> `{ average, count, distribution, hidden, last30Days { count, average }, byCourse[] }`. Test in `api/tests/reviews.test.ts`.

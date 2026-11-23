@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // Review moderation (spec 17): filter by course, status, stars or text; hide (with an optional reason),
 // show again, or delete. Hidden reviews stay saved and visible to their author only.
-import { onMounted, ref, watch } from 'vue';
+// Stats on top (average, star breakdown, per course) follow the course filter.
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import StatusPill from '@/components/common/StatusPill.vue';
 import StarRating from '@/components/review/StarRating.vue';
+import ReviewStats from '@/components/review/ReviewStats.vue';
 import * as api from '@/api/admin/reviews';
 import { get, errorMessage } from '@/api/client';
 import type { AdminCourseRow } from '@/api/admin/courses';
@@ -24,11 +26,13 @@ const hiding = ref<api.AdminReview | null>(null);
 const reason = ref('');
 const deleting = ref<api.AdminReview | null>(null);
 const toast = ref('');
+const stats = ref<api.ReviewStats | null>(null);
+const courseTitle = computed(() => courses.value.find((c) => c.id === q.value.courseId)?.title);
 
 async function load() {
   err.value = '';
   try {
-    data.value = await api.list(q.value);
+    [data.value, stats.value] = await Promise.all([api.list(q.value), api.stats(q.value.courseId || undefined)]);
   } catch (e) {
     err.value = errorMessage(e);
   }
@@ -97,6 +101,17 @@ async function confirmDelete() {
 <template>
   <div class="admin-page d-flex flex-column ga-6">
     <AdminPageHeader title="Reviews" subtitle="What learners wrote after finishing a course. Hide anything abusive or off topic: it leaves the course page but stays saved." />
+
+    <ReviewStats
+      v-if="stats"
+      :stats="stats"
+      :rating="q.rating"
+      :course-title="q.courseId ? courseTitle : undefined"
+      @rating="(v) => (q.rating = v)"
+      @course="(id) => (q.courseId = id)"
+      @hidden="q.status = 'HIDDEN'"
+    />
+    <v-skeleton-loader v-else type="card" color="surface" height="140" />
 
     <div class="filters">
       <div class="grow2">

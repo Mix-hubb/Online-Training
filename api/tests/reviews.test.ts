@@ -121,6 +121,33 @@ describe('course reviews', () => {
     expect((await as(u.id).patch(`/admin/reviews/${mine.body.id}`).send({ status: 'HIDDEN' })).status).toBe(403);
   });
 
+  it('admin stats: average and stars of shown reviews, hidden count, per course', async () => {
+    const admin = await makeUser('ADMIN');
+    const a = await makeCourse();
+    const b = await makeCourse();
+    const ids: string[] = [];
+    for (const [course, rating] of [[a, 5], [a, 4], [a, 2], [b, 3]] as const) {
+      const u = await completedLearner(course.id);
+      ids.push((await as(u.id).put(`/me/courses/${course.id}/review`).send({ rating, body: 'Text' })).body.id);
+    }
+    await as(admin.id).patch(`/admin/reviews/${ids[2]}`).send({ status: 'HIDDEN' });
+    await prisma.courseReview.update({ where: { id: ids[3] }, data: { createdAt: new Date(Date.now() - 40 * 86400000) } });
+
+    const all = (await as(admin.id).get('/admin/reviews/stats')).body;
+    expect(all).toMatchObject({ count: 3, average: 4, hidden: 1, distribution: { 5: 1, 4: 1, 3: 1, 2: 0, 1: 0 } });
+    expect(all.last30Days).toEqual({ count: 2, average: 4.5 });
+    expect(all.byCourse).toEqual([
+      expect.objectContaining({ courseId: a.id, count: 2, average: 4.5, hidden: 1 }),
+      expect.objectContaining({ courseId: b.id, count: 1, average: 3, hidden: 0 }),
+    ]);
+
+    const one = (await as(admin.id).get(`/admin/reviews/stats?courseId=${b.id}`)).body;
+    expect(one).toMatchObject({ count: 1, average: 3, hidden: 0, byCourse: [] });
+
+    const u = await makeUser();
+    expect((await as(u.id).get('/admin/reviews/stats')).status).toBe(403);
+  });
+
   it('a learner can delete their own review', async () => {
     const c = await makeCourse();
     const u = await completedLearner(c.id);
