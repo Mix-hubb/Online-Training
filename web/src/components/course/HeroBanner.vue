@@ -71,6 +71,14 @@ onMounted(() => {
   }, TICK);
 });
 onBeforeUnmount(() => clearInterval(timer));
+
+/** Glide down to "All courses" (works on every click, also when the URL already ends in #catalog). */
+function toCatalog() {
+  const el = document.getElementById('catalog');
+  if (!el) return;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: 'smooth' });
+  el.focus({ preventScroll: true });
+}
 </script>
 
 <template>
@@ -79,7 +87,7 @@ onBeforeUnmount(() => clearInterval(timer));
       <h1>{{ texts.title || 'Learn practical skills, step by step' }}</h1>
       <p>{{ texts.subtitle || 'Video lessons, a final test and a certificate.' }}</p>
       <div class="d-flex flex-wrap ga-3 mt-1">
-        <a href="#catalog" class="btn primary">Browse courses</a>
+        <a href="#catalog" class="btn primary" @click.prevent="toCatalog">Browse courses</a>
         <router-link v-if="internal" :to="featured!" class="btn">View featured course</router-link>
         <a v-else-if="featured" :href="featured" class="btn">View featured course</a>
       </div>

@@ -119,7 +119,7 @@ function clear() {
       </div>
     </section>
 
-    <section id="catalog" aria-labelledby="catalog-h" class="d-flex flex-column ga-5">
+    <section id="catalog" tabindex="-1" aria-labelledby="catalog-h" class="d-flex flex-column ga-5">
       <div class="sec-head">
         <div class="d-flex flex-column ga-1">
           <h2 id="catalog-h" class="big">All courses</h2>
@@ -178,6 +178,9 @@ function clear() {
 </template>
 
 <style scoped>
+#catalog:focus {
+  outline: none;
+}
 .home {
   display: flex;
   flex-direction: column;

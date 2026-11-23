@@ -15,7 +15,13 @@ export const router = createRouter({
     { path: '/403', name: 'forbidden', component: () => import('@/pages/errors/ForbiddenPage.vue') },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/pages/errors/NotFoundPage.vue') },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  // #hash links (e.g. "Browse courses" -> #catalog) glide to that section, below the sticky header.
+  // Back/forward restore the old position; any other navigation starts at the top.
+  scrollBehavior(to, _from, saved) {
+    if (saved) return saved;
+    if (to.hash) return { el: to.hash, top: 88, behavior: 'smooth' };
+    return { top: 0 };
+  },
 });
 
 installGuards(router);
