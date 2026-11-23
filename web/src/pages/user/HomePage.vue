@@ -94,11 +94,8 @@ function clear() {
   <div class="page home">
     <HeroBanner :banners="landing?.banners ?? []" :texts="texts" />
 
-    <PartnerLogos v-if="landing?.partners.length && landing.sections.partners?.isVisible !== false" :partners="landing.partners" />
-
     <section v-if="learner && cont.length" aria-labelledby="continue-h" class="d-flex flex-column ga-4">
       <div class="d-flex flex-column ga-1">
-        <span class="eyebrow">Pick up where you left off</span>
         <h2 id="continue-h" class="h2">Continue learning</h2>
       </div>
       <div class="row-wrap two">
@@ -125,7 +122,6 @@ function clear() {
     <section id="catalog" aria-labelledby="catalog-h" class="d-flex flex-column ga-5">
       <div class="sec-head">
         <div class="d-flex flex-column ga-1">
-          <span class="eyebrow">Course catalog</span>
           <h2 id="catalog-h" class="big">All courses</h2>
         </div>
         <span v-if="result" class="text-body-2 text-muted">Showing {{ result.items.length }} of {{ result.total }} {{ result.total === 1 ? 'course' : 'courses' }}</span>
@@ -151,7 +147,6 @@ function clear() {
 
     <section v-reveal class="how" aria-labelledby="how-h">
       <div class="how-head">
-        <span class="eyebrow">How it works</span>
         <h2 id="how-h" class="big">From first lesson to certificate</h2>
       </div>
       <ol class="steps">
@@ -177,6 +172,8 @@ function clear() {
         </template>
       </div>
     </section>
+
+    <PartnerLogos v-if="landing?.partners.length && landing.sections.partners?.isVisible !== false" :partners="landing.partners" />
   </div>
 </template>
 
