@@ -50,7 +50,8 @@ async function refresh() {
   data.value = await learningApi.learn(slug);
 }
 
-async function open(id: string) {
+/** autoplay: the learner picked this lesson (Next, Previous, sidebar), so the video starts by itself. */
+async function open(id: string, autoplay = false) {
   const l = data.value?.lessons.find((x) => x.id === id);
   if (!l || !l.unlocked) return;
   currentId.value = id;
@@ -63,7 +64,7 @@ async function open(id: string) {
   try {
     const p = await learningApi.play(id);
     await nextTick();
-    loadHls(p.url, p.resumeAt, p.qualities);
+    void loadHls(p.url, p.resumeAt, p.qualities, autoplay);
     if (!data.value?.preview) reporter.attach(id);
   } catch {
     videoMsg.value = 'The video could not be loaded.';
@@ -126,9 +127,9 @@ onMounted(async () => {
         </div>
 
         <div class="d-flex flex-wrap ga-3 justify-space-between">
-          <v-btn v-if="prev" variant="outlined" size="large" @click="open(prev.id)">← Previous lesson</v-btn>
+          <v-btn v-if="prev" variant="outlined" size="large" @click="open(prev.id, true)">← Previous lesson</v-btn>
           <span v-else />
-          <v-btn v-if="next" color="primary" size="large" :disabled="!next.unlocked" @click="open(next.id)">Next lesson →</v-btn>
+          <v-btn v-if="next" color="primary" size="large" :disabled="!next.unlocked" @click="open(next.id, true)">Next lesson →</v-btn>
           <v-btn v-else-if="data.quiz" color="primary" size="large" :disabled="!data.quiz.unlocked" :to="`/learn/${slug}/quiz`">Final test →</v-btn>
         </div>
 
@@ -152,7 +153,7 @@ onMounted(async () => {
 
       <aside class="side panel" aria-label="Course lessons">
         <div class="side-head">Course content</div>
-        <LessonSidebar :data="data" :current-id="currentId" :slug="slug" @select="open" />
+        <LessonSidebar :data="data" :current-id="currentId" :slug="slug" @select="(id: string) => open(id, true)" />
       </aside>
     </div>
     <v-snackbar :model-value="!!unlockedToast" @update:model-value="unlockedToast = ''" :timeout="5000">{{ unlockedToast }}</v-snackbar>
