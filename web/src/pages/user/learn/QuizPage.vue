@@ -35,6 +35,8 @@ const answered = (id: string) => {
   return !!(a && (a.optionId || a.essayText?.trim()));
 };
 const unanswered = computed(() => questions.value.filter((x) => !answered(x.id)).length);
+// Submit needs every question answered (2026-11-24). Only the timer may submit an incomplete test.
+const firstOpen = computed(() => questions.value.findIndex((x) => !answered(x.id)));
 
 function goResult(id: string) {
   void router.replace(`/learn/${slug}/result/${id}`);
@@ -103,6 +105,7 @@ async function save() {
 
 async function submit(auto = false) {
   if (!attempt.value || busy.value) return;
+  if (!auto && unanswered.value > 0) return;
   clearTimeout(saveTimer);
   busy.value = true;
   try {
@@ -175,10 +178,24 @@ function essay(text: string) {
           </section>
 
           <div class="d-flex flex-wrap align-center ga-3">
-            <span class="text-body-2 text-muted flex-grow-1">{{ questions.length - unanswered }} of {{ questions.length }} answered</span>
+            <span class="text-body-2 text-muted flex-grow-1" aria-live="polite">
+              {{ questions.length - unanswered }} of {{ questions.length }} answered<template v-if="unanswered">
+                · Answer every question to submit.
+                <button type="button" class="jump" @click="idx = firstOpen">Go to question {{ firstOpen + 1 }}</button>
+              </template>
+            </span>
             <v-btn variant="outlined" :disabled="idx === 0" prepend-icon="mdi-chevron-left" @click="idx--">Previous</v-btn>
             <v-btn v-if="idx < questions.length - 1" variant="outlined" append-icon="mdi-chevron-right" @click="idx++">Next</v-btn>
-            <v-btn color="primary" min-height="50" class="px-7" @click="confirm = true">Submit test</v-btn>
+            <v-btn
+              color="primary"
+              min-height="50"
+              class="px-7"
+              :disabled="unanswered > 0"
+              :aria-description="unanswered ? `${unanswered} ${unanswered === 1 ? 'question' : 'questions'} not answered yet` : undefined"
+              @click="confirm = true"
+            >
+              Submit test
+            </v-btn>
           </div>
         </div>
 
@@ -205,7 +222,7 @@ function essay(text: string) {
         </aside>
       </div>
       <ConfirmDialog v-model="confirm" title="Submit the test?" confirm-label="Submit" :loading="busy" @confirm="submit()">
-        <span v-if="unanswered">You have {{ unanswered }} unanswered {{ unanswered === 1 ? 'question' : 'questions' }}. </span>You cannot change answers after submitting.
+        You cannot change answers after submitting.
       </ConfirmDialog>
     </template>
 
@@ -254,6 +271,15 @@ function essay(text: string) {
 </template>
 
 <style scoped>
+.jump {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--ot-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
 .quiz {
   display: flex;
   flex-direction: column;
