@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Instructors (2026-11-23): instructor logins on their own page, apart from Users and Partners.
 // Add an instructor here (new login with a temporary password, shown once), or promote a learner who already has an account.
-// Which courses they teach and each course's share are set in the course editor's Instructors tab; this page shows them.
+// Click a name to open the instructor's own page (assigned courses, shares, earnings; 2026-11-24).
+// Which courses they teach and each course's share are set in the course editor's Instructors tab.
 import { onMounted, ref, watch } from 'vue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
@@ -10,7 +11,7 @@ import * as api from '@/api/admin/instructors';
 import * as users from '@/api/admin/users';
 import { ApiError, errorMessage } from '@/api/client';
 import type { Paged } from '@/types';
-import { date, money, percentBp } from '@/utils/format';
+import { date, money } from '@/utils/format';
 
 const q = ref({ q: '', status: '', page: 1 });
 const data = ref<Paged<api.InstructorRow> | null>(null);
@@ -87,7 +88,7 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
 
 <template>
   <div class="admin-page d-flex flex-column ga-6">
-    <AdminPageHeader title="Instructors" subtitle="Instructor logins, the courses they teach and their share of each course. Assign courses and set shares in the course editor's Instructors tab.">
+    <AdminPageHeader title="Instructors" subtitle="Instructor logins. Open an instructor to see their courses, shares and earnings. Assign courses and set shares in the course editor's Instructors tab.">
       <v-btn color="primary" prepend-icon="mdi-plus" @click="openAdd">Add instructor</v-btn>
     </AdminPageHeader>
     <div class="filters">
@@ -111,12 +112,11 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
       No instructors yet. Add one to give them a login.
     </div>
     <div v-else class="table-scroll">
-      <table class="data-table" style="min-width: 900px">
+      <table class="data-table" style="min-width: 760px">
         <caption class="sr-only">Instructors</caption>
         <thead>
           <tr>
             <th scope="col">Instructor</th>
-            <th scope="col">Courses and share</th>
             <th scope="col">Unpaid</th>
             <th scope="col">Status</th>
             <th scope="col">Added</th>
@@ -126,17 +126,8 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
         <tbody>
           <tr v-for="i in data.items" :key="i.id">
             <td>
-              <div class="font-weight-medium">{{ i.name }}</div>
+              <router-link :to="`/admin/instructors/${i.id}`" class="font-weight-medium">{{ i.name }}</router-link>
               <div class="text-caption text-muted">{{ i.email }}<span v-if="i.mustChangePassword"> · temporary password</span></div>
-            </td>
-            <td>
-              <span v-if="!i.courses.length" class="text-caption text-muted">No courses yet</span>
-              <ul v-else class="clist">
-                <li v-for="c in i.courses" :key="c.id">
-                  <router-link :to="`/admin/courses/${c.id}`">{{ c.title }}</router-link>
-                  <span class="text-muted"> · {{ c.sharePercentBp ? percentBp(c.sharePercentBp) : 'no share' }}</span>
-                </li>
-              </ul>
             </td>
             <td class="text-no-wrap">
               <template v-if="hasOutstanding(i)">
@@ -161,7 +152,7 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
               </button>
             </td>
           </tr>
-          <tr v-if="!data.items.length"><td colspan="6" class="text-center text-muted">No instructors match.</td></tr>
+          <tr v-if="!data.items.length"><td colspan="5" class="text-center text-muted">No instructors match.</td></tr>
         </tbody>
       </table>
     </div>
@@ -211,15 +202,6 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
 </template>
 
 <style scoped>
-.clist {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 14px;
-}
 .row-link:disabled {
   color: var(--ot-faint);
   cursor: not-allowed;

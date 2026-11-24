@@ -12,6 +12,8 @@
 //   POST   /admin/instructors  { name, email, promoteExisting? }
 //          new email -> INSTRUCTOR login, temporary password returned ONCE (never stored in plain text)
 //          email of a learner -> ACCOUNT_EXISTS (409); resend with promoteExisting: true to make them an instructor
+//   GET    /admin/instructors/:id   one instructor: profile, assigned courses (share, co-instructors, learners,
+//          rating, earned per course), earnings totals per currency and the latest revenue entries (2026-11-24)
 //   POST   /admin/instructors/:id/reset-password   FALLBACK only ("Forgot password?" first); temporary password once
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -164,6 +166,115 @@ instructorsAdminRouter.get(
       outstanding: unpaid.filter((x) => x.partnerId === partnerLink?.id).map((x) => ({ currency: x.currency, amountMinor: x._sum.amountMinor ?? 0 })),
     }));
     res.json(paged(items, total, p));
+  }),
+);
+
+const RECENT_ENTRIES = 10;
+
+instructorsAdminRouter.get(
+  '/instructors/:id',
+  h(async (req, res) => {
+    const u = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        role: true,
+        status: true,
+        mustChangePassword: true,
+        createdAt: true,
+        partnerLink: { select: { id: true } },
+        teaches: {
+          orderBy: { course: { title: 'asc' } },
+          select: {
+            sharePercentBp: true,
+            assignedAt: true,
+            course: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                status: true,
+                thumbnailUrl: true,
+                isFree: true,
+                priceMinor: true,
+                priceThbMinor: true,
+                instructors: { select: { sharePercentBp: true, user: { select: { id: true, name: true } } } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!u || u.role !== 'INSTRUCTOR') throw new AppError('NOT_FOUND', 404);
+    const courseIds = u.teaches.map((t) => t.course.id);
+    const partnerId = u.partnerLink?.id ?? null;
+    const [learners, completed, ratings, earnedByCourse, totals, recent] = await Promise.all([
+      prisma.enrollment.groupBy({ by: ['courseId'], where: { courseId: { in: courseIds } }, _count: { _all: true } }),
+      prisma.enrollment.groupBy({ by: ['courseId'], where: { courseId: { in: courseIds }, status: 'COMPLETED' }, _count: { _all: true } }),
+      prisma.courseReview.groupBy({ by: ['courseId'], where: { courseId: { in: courseIds }, status: 'VISIBLE' }, _avg: { rating: true }, _count: { _all: true } }),
+      partnerId
+        ? prisma.revenueEntry.groupBy({ by: ['courseId', 'currency'], where: { partnerId }, _sum: { amountMinor: true } })
+        : Promise.resolve([]),
+      partnerId
+        ? prisma.revenueEntry.groupBy({ by: ['currency', 'status'], where: { partnerId }, _sum: { amountMinor: true } })
+        : Promise.resolve([]),
+      partnerId
+        ? prisma.revenueEntry.findMany({ where: { partnerId }, orderBy: { createdAt: 'desc' }, take: RECENT_ENTRIES })
+        : Promise.resolve([]),
+    ]);
+    const titles = new Map(u.teaches.map((t) => [t.course.id, t.course.title]));
+    // Entries can belong to a course the instructor no longer teaches.
+    const missing = [...new Set(recent.map((e) => e.courseId).filter((id) => !titles.has(id)))];
+    if (missing.length) {
+      for (const c of await prisma.course.findMany({ where: { id: { in: missing } }, select: { id: true, title: true } })) titles.set(c.id, c.title);
+    }
+    const currencies = [...new Set(totals.map((t) => t.currency))].sort();
+    const sumOf = (currency: string, status?: 'PAID' | 'UNPAID') =>
+      totals.filter((t) => t.currency === currency && (!status || t.status === status)).reduce((a, t) => a + (t._sum.amountMinor ?? 0), 0);
+
+    res.json({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      avatarUrl: u.avatarUrl,
+      status: u.status,
+      mustChangePassword: u.mustChangePassword,
+      createdAt: u.createdAt,
+      partnerId,
+      courses: u.teaches.map(({ course: { instructors, ...c }, sharePercentBp, assignedAt }) => {
+        const r = ratings.find((x) => x.courseId === c.id);
+        return {
+          ...c,
+          sharePercentBp,
+          assignedAt,
+          coInstructors: instructors.filter((i) => i.user.id !== u.id).map((i) => ({ id: i.user.id, name: i.user.name, sharePercentBp: i.sharePercentBp })),
+          learners: learners.find((x) => x.courseId === c.id)?._count._all ?? 0,
+          completed: completed.find((x) => x.courseId === c.id)?._count._all ?? 0,
+          rating: { average: r?._avg.rating ?? null, count: r?._count._all ?? 0 },
+          earned: earnedByCourse.filter((x) => x.courseId === c.id).map((x) => ({ currency: x.currency, amountMinor: x._sum.amountMinor ?? 0 })),
+        };
+      }),
+      earnings: currencies.map((currency) => ({
+        currency,
+        earnedMinor: sumOf(currency),
+        paidMinor: sumOf(currency, 'PAID'),
+        unpaidMinor: sumOf(currency, 'UNPAID'),
+      })),
+      recent: recent.map((e) => ({
+        id: e.id,
+        createdAt: e.createdAt,
+        courseId: e.courseId,
+        courseTitle: titles.get(e.courseId) ?? 'Deleted course',
+        currency: e.currency,
+        baseMinor: e.baseMinor,
+        percentBp: e.percentBp,
+        amountMinor: e.amountMinor,
+        status: e.status,
+      })),
+    });
   }),
 );
 

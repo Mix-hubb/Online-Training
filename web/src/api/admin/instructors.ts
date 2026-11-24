@@ -41,3 +41,46 @@ export interface CreatedInstructor {
 export const listInstructors = (q: { q?: string; status?: string; page?: number }) => get<Paged<InstructorRow>>('/admin/instructors', q);
 export const createInstructor = (b: { name: string; email: string; promoteExisting?: boolean }) => post<CreatedInstructor>('/admin/instructors', b);
 export const resetInstructorPassword = (id: string) => post<{ email: string; temporaryPassword: string }>(`/admin/instructors/${id}/reset-password`);
+
+// Instructor detail page (2026-11-24): one instructor, their assigned courses and earnings.
+export interface InstructorCourse {
+  id: string;
+  title: string;
+  slug: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  thumbnailUrl: string | null;
+  isFree: boolean;
+  priceMinor: number;
+  priceThbMinor: number | null;
+  sharePercentBp: number;
+  assignedAt: string;
+  coInstructors: { id: string; name: string; sharePercentBp: number }[];
+  learners: number;
+  completed: number;
+  rating: { average: number | null; count: number };
+  earned: { currency: string; amountMinor: number }[];
+}
+export interface InstructorDetail {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  status: 'ACTIVE' | 'BANNED';
+  mustChangePassword: boolean;
+  createdAt: string;
+  partnerId: string | null;
+  courses: InstructorCourse[];
+  earnings: { currency: string; earnedMinor: number; paidMinor: number; unpaidMinor: number }[];
+  recent: {
+    id: string;
+    createdAt: string;
+    courseId: string;
+    courseTitle: string;
+    currency: string;
+    baseMinor: number;
+    percentBp: number;
+    amountMinor: number;
+    status: 'PAID' | 'UNPAID';
+  }[];
+}
+export const getInstructor = (id: string) => get<InstructorDetail>(`/admin/instructors/${id}`);
