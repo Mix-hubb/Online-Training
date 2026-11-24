@@ -21,10 +21,36 @@ describe('image uploads are shrunk', () => {
     const admin = await makeUser('ADMIN');
     const big = await as(admin.id).post('/admin/uploads').send({ kind: 'cover', file: { dataBase64: await photo(4000, 2250, 'png') } });
     expect(big.body.url).toMatch(/\.webp$/);
-    expect(big.body.width).toBe(1600);
+    expect(big.body.width).toBe(2000);
     const small = await as(admin.id).post('/admin/uploads').send({ kind: 'cover', file: { dataBase64: await photo(320, 180, 'png') } });
     expect(small.status).toBe(201);
     expect(small.body.width ?? 320).toBe(320);
+  });
+
+  it('banner: a large photo is kept sharp (up to 2880 px), a fitting JPEG is stored exactly as uploaded', async () => {
+    const admin = await makeUser('ADMIN');
+    const big = await as(admin.id).post('/admin/uploads').send({ kind: 'banner', file: { dataBase64: await photo(6000, 3375, 'jpeg') } });
+    expect(big.status).toBe(201);
+    expect(big.body.url).toMatch(/\.webp$/);
+    expect(big.body.width).toBe(2880);
+
+    const fitting = await photo(1920, 1080, 'jpeg');
+    const r = await as(admin.id).post('/admin/uploads').send({ kind: 'banner', file: { dataBase64: fitting } });
+    expect(r.body.url).toMatch(/\.jpg$/);
+    const stored = await as(admin.id).get(new URL(r.body.url).pathname);
+    expect(Buffer.from(stored.body).toString('base64')).toBe(fitting);
+  });
+
+  it('admin images may be up to 15 MB; learner attachments keep the 5 MB limit', async () => {
+    const admin = await makeUser('ADMIN');
+    // Random pixels do not compress: a PNG well over 5 MB.
+    const noise = Buffer.alloc(2200 * 1100 * 3);
+    for (let i = 0; i < noise.length; i++) noise[i] = (i * 2654435761) >>> 24;
+    const heavy = (await sharp(noise, { raw: { width: 2200, height: 1100, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer()).toString('base64');
+    expect(Buffer.from(heavy, 'base64').length).toBeGreaterThan(5 * 1024 * 1024);
+    const r = await as(admin.id).post('/admin/uploads').send({ kind: 'banner', file: { dataBase64: heavy } });
+    expect(r.status).toBe(201);
+    expect(r.body.url).toMatch(/\.webp$/);
   });
 
   it('a broken image is refused with 415, not a server error', async () => {

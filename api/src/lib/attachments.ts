@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { AppError } from './errors.js';
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+/** Admin site images (banner, cover...): high-resolution photos are often over 5 MB (2026-11-24). */
+export const MAX_ADMIN_IMAGE_BYTES = 15 * 1024 * 1024;
 export const MAX_FILES_PER_MESSAGE = 3;
 
 export const fileInput = z.object({
@@ -47,11 +49,11 @@ function jpegSize(buf: Buffer): { width?: number; height?: number } {
   return {};
 }
 
-export function decodeImage(file: FileInput): CheckedImage {
+export function decodeImage(file: FileInput, maxBytes = MAX_FILE_BYTES): CheckedImage {
   const b64 = file.dataBase64.replace(/^data:[^;]+;base64,/, '');
-  if (Math.floor((b64.length * 3) / 4) > MAX_FILE_BYTES + 3) throw new AppError('ATTACHMENT_TOO_LARGE', 413);
+  if (Math.floor((b64.length * 3) / 4) > maxBytes + 3) throw new AppError('ATTACHMENT_TOO_LARGE', 413);
   const buffer = Buffer.from(b64, 'base64');
-  if (buffer.length > MAX_FILE_BYTES) throw new AppError('ATTACHMENT_TOO_LARGE', 413);
+  if (buffer.length > maxBytes) throw new AppError('ATTACHMENT_TOO_LARGE', 413);
   const info = sniffImage(buffer);
   if (!info) throw new AppError('UNSUPPORTED_FILE_TYPE', 415, 'Only JPG, PNG or WebP images');
   return { buffer, ...info };
@@ -59,7 +61,7 @@ export function decodeImage(file: FileInput): CheckedImage {
 
 export function decodeImages(files: FileInput[]): CheckedImage[] {
   if (files.length > MAX_FILES_PER_MESSAGE) throw new AppError('TOO_MANY_ATTACHMENTS', 400);
-  return files.map(decodeImage);
+  return files.map((f) => decodeImage(f));
 }
 
 export const privateKey = (prefix: string, ext: string) => `${prefix}/${crypto.randomUUID()}.${ext}`;

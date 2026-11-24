@@ -85,7 +85,7 @@ function setField(s: api.Section, k: string, v: string) {
         <v-btn :variant="adding ? 'outlined' : 'flat'" :color="adding ? undefined : 'primary'" @click="adding = !adding">{{ adding ? 'Cancel' : '+ Add banner' }}</v-btn>
       </div>
       <div v-if="adding" class="add-box">
-        <ImageUpload v-model="newImg" kind="banner" :aspect="3.2" label="Banner image" />
+        <ImageUpload v-model="newImg" kind="banner" :aspect="16 / 9" label="Banner image" />
         <div class="d-flex flex-column ga-1" style="flex: 1 1 260px; min-width: 0">
           <v-text-field v-model="newAlt" label="Description (for screen readers)" />
           <v-text-field v-model="newLink" label="Link (optional)" placeholder="https:// or /courses/..." />
@@ -111,7 +111,7 @@ function setField(s: api.Section, k: string, v: string) {
           </span>
         </li>
       </ol>
-      <p class="ma-0 text-caption text-muted">Recommended size 1600 × 500 px. Banners show in this order on the home page.</p>
+      <p class="ma-0 text-caption text-muted">Use 16:9 images, 1920 × 1080 px or larger, with the subject near the middle (the edges are cropped on some screens). Banners show in this order on the home page.</p>
     </section>
 
     <template v-if="hero && footer && partners">

@@ -3,6 +3,8 @@
 // Each kind has a maximum box (2x its biggest display size); images are never enlarged.
 // Logos and signatures can be drawn into the certificate PDF (pdf-lib: PNG/JPG only), so they keep PNG/JPG;
 // everything else becomes WebP. EXIF orientation is applied, and metadata (GPS etc.) is dropped.
+// Banners and covers are what visitors look at most (2026-11-24): a bigger box for high-res screens,
+// WebP quality 90, and an image that already fits the box and is not heavy is kept exactly as uploaded.
 import sharp from 'sharp';
 import type { CheckedImage } from './attachments.js';
 import { AppError } from './errors.js';
@@ -10,8 +12,8 @@ import { AppError } from './errors.js';
 export type ImageKind = 'cover' | 'banner' | 'logo' | 'signature' | 'avatar' | 'other' | 'chat' | 'slip';
 
 const BOX: Record<ImageKind, { w: number; h: number }> = {
-  cover: { w: 1600, h: 1600 },
-  banner: { w: 1920, h: 1920 },
+  cover: { w: 2000, h: 2000 },
+  banner: { w: 2880, h: 2880 },
   logo: { w: 640, h: 320 },
   signature: { w: 1200, h: 400 },
   avatar: { w: 512, h: 512 },
@@ -21,6 +23,9 @@ const BOX: Record<ImageKind, { w: number; h: number }> = {
   slip: { w: 2000, h: 2000 },
 };
 const PDF_SAFE: ReadonlySet<ImageKind> = new Set(['logo', 'signature']);
+/** Shown large on the home page and course pages: keep them sharp. */
+const SHOWCASE: ReadonlySet<ImageKind> = new Set(['banner', 'cover']);
+const KEEP_AS_IS_BYTES = 1.5 * 1024 * 1024;
 
 export async function optimizeImage(img: CheckedImage, kind: ImageKind): Promise<CheckedImage> {
   try {
@@ -33,6 +38,10 @@ export async function optimizeImage(img: CheckedImage, kind: ImageKind): Promise
 
 async function shrink(img: CheckedImage, kind: ImageKind): Promise<CheckedImage> {
   const box = BOX[kind];
+  const fits = (img.width ?? Infinity) <= box.w && (img.height ?? Infinity) <= box.h;
+  // Already the right size and not heavy: no re-encode, so no quality is lost at all.
+  // Still re-encoded if it may carry an EXIF rotation or GPS data (JPEG), so photos show upright and stay private.
+  if (SHOWCASE.has(kind) && fits && img.buffer.length <= KEEP_AS_IS_BYTES && !(await hasExif(img.buffer))) return img;
   const base = sharp(img.buffer, { limitInputPixels: 60_000_000 })
     .rotate()
     .resize({ width: box.w, height: box.h, fit: 'inside', withoutEnlargement: true });
@@ -48,11 +57,17 @@ async function shrink(img: CheckedImage, kind: ImageKind): Promise<CheckedImage>
       [mime, ext] = ['image/png', 'png'];
     }
   } else {
-    out = await base.webp({ quality: 82 }).toBuffer({ resolveWithObject: true });
+    out = await (SHOWCASE.has(kind) ? base.webp({ quality: 90, smartSubsample: true, effort: 5 }) : base.webp({ quality: 82 })).toBuffer({
+      resolveWithObject: true,
+    });
     [mime, ext] = ['image/webp', 'webp'];
   }
   // Keep the original if re-encoding made it bigger (already small and well compressed) and it fits the box.
-  const fits = (img.width ?? Infinity) <= box.w && (img.height ?? Infinity) <= box.h;
   if (fits && out.data.length >= img.buffer.length && (!PDF_SAFE.has(kind) || img.mime !== 'image/webp')) return img;
   return { buffer: out.data, mime, ext, width: out.info.width, height: out.info.height };
+}
+
+async function hasExif(buf: Buffer): Promise<boolean> {
+  const m = await sharp(buf).metadata();
+  return !!m.exif || (m.orientation ?? 1) !== 1;
 }
