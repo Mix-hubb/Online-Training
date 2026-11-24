@@ -20,7 +20,7 @@ async function open(n: AppNotification) {
 <template>
   <v-menu location="bottom end" :close-on-content-click="true">
     <template #activator="{ props }">
-      <v-btn v-bind="props" icon :variant="framed ? 'outlined' : 'text'" :class="{ 'bell-framed': framed }" :aria-label="store.unread ? `Notifications, ${store.unread} unread` : 'Notifications'">
+      <v-btn v-bind="props" icon variant="text" :class="{ 'bell-framed': framed }" :aria-label="store.unread ? `Notifications, ${store.unread} unread` : 'Notifications'">
         <v-badge :model-value="store.unread > 0" :content="store.unread > 9 ? '9+' : store.unread" color="primary" class="square-badge">
           <v-icon icon="mdi-bell-outline" />
         </v-badge>
@@ -48,10 +48,17 @@ async function open(n: AppNotification) {
 </template>
 
 <style scoped>
+/* Plain icon (no box), 40px like the account chip beside it, with a soft round hover. */
 .bell-framed {
-  border-radius: var(--ot-radius-control) !important;
-  width: 44px;
-  height: 44px;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  border-radius: 50% !important;
+  color: var(--ot-text-2) !important;
+}
+.bell-framed:hover {
+  color: var(--ot-text) !important;
 }
 .square-badge :deep(.v-badge__badge) {
   border-radius: var(--ot-radius-control);

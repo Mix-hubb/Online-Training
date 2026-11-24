@@ -9,7 +9,7 @@ const drawer = ref<boolean | null>(null); // null = Vuetify decides (open on des
 
 <template>
   <InstructorSidebar v-model="drawer" />
-  <StaffTopbar view-site-label="Learner view" @menu="drawer = !drawer" />
+  <StaffTopbar @menu="drawer = !drawer" />
   <v-main>
     <slot />
   </v-main>

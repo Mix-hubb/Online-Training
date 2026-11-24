@@ -1,9 +1,7 @@
 <script setup lang="ts">
 // Sidebar shared by the admin, instructor and partner areas (mockup): brand + area name,
-// flat list with optional count badges, and "View site" + "Log out" at the bottom.
-import { useRouter } from 'vue-router';
+// flat list with optional count badges. "View site" and "Log out" are in the top bar's account menu.
 import BrandMark from './BrandMark.vue';
-import { useAuthStore } from '@/stores/auth';
 
 export type StaffNavItem = { to: string; title: string; exact?: boolean; count?: number; icon?: string };
 
@@ -34,15 +32,8 @@ const ICONS: Record<string, string> = {
 };
 const iconFor = (i: StaffNavItem) => i.icon ?? ICONS[i.to] ?? 'mdi-circle-small';
 
-defineProps<{ area: string; items: StaffNavItem[]; navLabel: string; viewSiteLabel?: string }>();
+defineProps<{ area: string; items: StaffNavItem[]; navLabel: string }>();
 const open = defineModel<boolean | null>({ default: null });
-const auth = useAuthStore();
-const router = useRouter();
-
-async function logout() {
-  await auth.logout();
-  await router.push('/login');
-}
 </script>
 
 <template>
@@ -64,13 +55,6 @@ async function logout() {
         </li>
       </ul>
     </nav>
-    <template #append>
-      <div class="d-flex flex-column ga-2 pa-4">
-        <slot name="footer" />
-        <router-link to="/" class="side-out">← {{ viewSiteLabel ?? 'View site' }}</router-link>
-        <button type="button" class="side-out" @click="logout">Log out</button>
-      </div>
-    </template>
   </v-navigation-drawer>
 </template>
 
@@ -160,23 +144,5 @@ async function logout() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.side-out {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: var(--ot-radius-control);
-  border: 1px solid var(--ot-border);
-  color: var(--ot-muted);
-  text-decoration: none;
-  font-size: 14px;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-.side-out:hover {
-  background: var(--ot-surface);
-  color: var(--ot-text);
 }
 </style>

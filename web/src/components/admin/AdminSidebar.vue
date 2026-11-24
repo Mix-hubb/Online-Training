@@ -46,5 +46,5 @@ watch(
 </script>
 
 <template>
-  <StaffSidebar v-model="open" area="Admin" nav-label="Admin" :items="items" view-site-label="View site as user" />
+  <StaffSidebar v-model="open" area="Admin" nav-label="Admin" :items="items" />
 </template>
