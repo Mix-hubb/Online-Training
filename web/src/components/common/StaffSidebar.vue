@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Sidebar shared by the admin, instructor and partner areas (mockup): brand + area name,
 // flat list with optional count badges. "View site" and "Log out" are in the top bar's account menu.
+import { useDisplay } from 'vuetify';
 import BrandMark from './BrandMark.vue';
 
 export type StaffNavItem = { to: string; title: string; exact?: boolean; count?: number; icon?: string };
@@ -34,10 +35,14 @@ const iconFor = (i: StaffNavItem) => i.icon ?? ICONS[i.to] ?? 'mdi-circle-small'
 
 defineProps<{ area: string; items: StaffNavItem[]; navLabel: string }>();
 const open = defineModel<boolean | null>({ default: null });
+// Same rule as the top bar's menu button (StaffTopbar: shown below md). Vuetify's own default treats
+// every iPad / phone OS as "mobile" and any width under 1280 px too, so on an iPad the drawer hid
+// itself while the top bar showed no menu button: no way to open it (2026-11-24).
+const { mdAndUp } = useDisplay();
 </script>
 
 <template>
-  <v-navigation-drawer v-model="open" width="248" class="staff-side" border="0">
+  <v-navigation-drawer v-model="open" :mobile="!mdAndUp" width="248" class="staff-side" border="0">
     <div class="brand">
       <BrandMark />
       <div class="d-flex flex-column">

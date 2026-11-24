@@ -92,10 +92,21 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* Even rows: 4 across on a wide screen, 2 x 2 on a tablet (auto-fit gave 3 + 1), 1 on a phone. */
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+@media (max-width: 1279px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .h2 {
   margin: 0;
@@ -104,7 +115,7 @@ onMounted(async () => {
 }
 .attn {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
 }
 .attn strong {
