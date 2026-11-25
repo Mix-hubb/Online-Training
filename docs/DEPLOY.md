@@ -1,11 +1,12 @@
 # Deploy on Railway
 
-One Railway project with three parts: **Postgres**, **api** (Express) and **web** (the built Vue site).
+One Railway project with two services, **api** (Express) and **web** (the built Vue site), and a Postgres
+database: either **Supabase** (section 1A) or Railway's own Postgres (section 1B).
 Both services build from this GitHub repo (`main`); each one uses its own folder.
 
 ```
+Supabase (or Railway Postgres)   database
 Railway project
-├── Postgres              database
 ├── api   (folder api/)   https://api.<your-domain>   or  <name>.up.railway.app
 └── web   (folder web/)   https://www.<your-domain>   or  <name>.up.railway.app
 ```
@@ -14,9 +15,30 @@ The build and start settings are in the repo: `api/railway.json` and `web/railwa
 
 ## 1. Create the project and the database
 
-1. Railway: **New Project → Deploy from GitHub repo →** this repository.
-   Railway creates one service. It will fail until step 2 is done; that is expected.
-2. In the project: **New → Database → PostgreSQL**.
+Railway: **New Project → Deploy from GitHub repo →** this repository.
+Railway creates one service. It will fail until step 2 is done; that is expected.
+
+### 1A. Database on Supabase
+
+1. supabase.com → **New project**. Pick the region closest to your Railway region (e.g. Singapore for both).
+   Save the database password somewhere safe (a password manager); it is needed in the URLs below.
+2. In the project, open **Connect** (top bar) → **ORMs → Prisma**, or **Connection string**. You need two URLs:
+   - **Transaction pooler** (host `...pooler.supabase.com`, port **6543**) → `DATABASE_URL`.
+     Add `?pgbouncer=true&connection_limit=5` at the end (Prisma needs `pgbouncer=true` on this pooler).
+   - **Session pooler** (same host, port **5432**) → `DIRECT_URL`. Used only by `prisma migrate`.
+   Put the database password in place of `[YOUR-PASSWORD]` in both.
+   (The "Direct connection" `db.<ref>.supabase.co` is IPv6 only; the poolers work from Railway.)
+3. Nothing to create by hand: the api runs `prisma migrate deploy` on its first deploy and creates every table.
+   The last migration also closes the tables to Supabase's **Data API** (row level security on, no rights for
+   `anon` / `authenticated`): this app reads the database only through the api, never with Supabase keys.
+   For extra safety you may also turn the Data API off: **Project Settings → Data API → Disable**.
+4. Backups: the free plan has none you can restore yourself; a paid plan has daily backups (and
+   point-in-time recovery as an add-on). Decide before real learners and payments are in it.
+
+### 1B. Database on Railway instead
+
+In the project: **New → Database → PostgreSQL**. Then `DATABASE_URL` and `DIRECT_URL` are both
+`${{Postgres.DATABASE_URL}}`.
 
 ## 2. api service
 
@@ -41,7 +63,8 @@ Without it, uploaded banners, covers and slips are lost on every deploy.
 | Variable | Value |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `DATABASE_URL` | Supabase: Transaction pooler URL + `?pgbouncer=true&connection_limit=5`. Railway Postgres: `${{Postgres.DATABASE_URL}}` |
+| `DIRECT_URL` | Supabase: Session pooler URL. Railway Postgres: `${{Postgres.DATABASE_URL}}` |
 | `JWT_SECRET` | a long random string (at least 32 characters). Never reuse the local one. |
 | `API_URL` | the api address, e.g. `https://api.<your-domain>` (used in links to uploaded images) |
 | `WEB_URL` | the web address, e.g. `https://www.<your-domain>` (CORS, email links, Stripe return) |
@@ -124,5 +147,11 @@ login cookie. With the same company domain, login works in every browser.
   the Root Directory is not set. Set it, then use **Deploy latest commit** (not Redeploy on the old one:
   Redeploy re-uses the old settings).
 - `Invalid environment` in the api log: a required variable is missing (see the table in step 2).
+- `Environment variable not found: DIRECT_URL` during the pre-deploy step: add `DIRECT_URL`.
+- `prepared statement "s0" already exists` (Supabase): `DATABASE_URL` is the Transaction pooler without
+  `?pgbouncer=true`.
+- `Can't reach database server` (Supabase): wrong password in the URL, the project is paused (free projects
+  pause after a week without use: open it in Supabase to resume), or the Direct connection URL was used
+  instead of a pooler URL.
 - The site loads but every request fails: `VITE_API_URL` is wrong, or `WEB_URL` on the api does not match the
   web address exactly (CORS).

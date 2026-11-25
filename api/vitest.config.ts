@@ -14,6 +14,7 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       DATABASE_URL: testDb,
+      DIRECT_URL: testDb,
       JWT_SECRET: 'test-secret-0123456789abcdef',
       WEB_URL: 'http://localhost:5173',
       API_URL: 'http://localhost:4000',
