@@ -32,6 +32,10 @@ Railway creates one service. It will fail until step 2 is done; that is expected
    The last migration also closes the tables to Supabase's **Data API** (row level security on, no rights for
    `anon` / `authenticated`): this app reads the database only through the api, never with Supabase keys.
    For extra safety you may also turn the Data API off: **Project Settings → Data API → Disable**.
+   Prefer to create the tables yourself first? Supabase **SQL Editor → New query**, paste the whole of
+   [`supabase-init.sql`](supabase-init.sql), **Run** (once, on the empty database). It records the migrations
+   too, so the api's first deploy finds nothing to do. After adding a migration, rebuild the file with
+   `npm run sql:supabase` (in `api/`).
 4. Backups: the free plan has none you can restore yourself; a paid plan has daily backups (and
    point-in-time recovery as an add-on). Decide before real learners and payments are in it.
 

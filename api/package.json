@@ -10,6 +10,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
     "migrate:deploy": "prisma migrate deploy",
+    "sql:supabase": "node scripts/build-supabase-sql.mjs",
     "create-admin": "node dist/cli/create-admin.js"
   },
   "//": "If the existing api starter already has a package.json, keep the starter's and only add what is missing.",

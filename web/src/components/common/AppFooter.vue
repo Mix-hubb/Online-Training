@@ -10,7 +10,7 @@ onMounted(load);
 const route = useRoute();
 // The home page already shows the scrolling partner strip, so the footer row is left out there (mockup).
 const partners = computed(() => (route.name === 'home' ? [] : landing.value?.partners ?? []));
-const footer = computed(() => (landing.value?.sections.footer?.content ?? {}) as Record<string, string>);
+const footer = computed(() => (landing.value?.sections?.footer?.content ?? {}) as Record<string, string>);
 </script>
 
 <template>

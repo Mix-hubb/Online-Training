@@ -39,7 +39,7 @@ const CONT_MAX = 3;
 const mine = ref<MyCourse[]>([]);
 const mineById = computed(() => new Map(mine.value.map((m) => [m.course.id, m])));
 const learner = computed(() => !!auth.user && auth.user.role !== 'PARTNER');
-const texts = computed(() => (landing.value?.sections.hero?.content ?? {}) as Record<string, string>);
+const texts = computed(() => (landing.value?.sections?.hero?.content ?? {}) as Record<string, string>);
 
 let t: ReturnType<typeof setTimeout> | undefined;
 async function fetchCourses() {

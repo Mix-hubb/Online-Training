@@ -10,7 +10,14 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
+/** VITE_API_URL without "https://" would be read as a path on the web site itself (which answers every path
+ *  with index.html), so a bare host gets https:// added; a trailing slash is dropped. */
+function apiBase(raw: string | undefined): string {
+  const v = (raw ?? '').trim().replace(/\/+$/, '');
+  if (!v) return 'http://localhost:4000';
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+export const API_BASE = apiBase(import.meta.env.VITE_API_URL as string | undefined);
 
 type Query = Record<string, string | number | boolean | null | undefined>;
 
@@ -41,6 +48,11 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   }
   if (res.status === 204) return undefined as T;
   const type = res.headers.get('content-type') ?? '';
+  // An HTML page means the request reached the web site, not the api: VITE_API_URL is wrong.
+  if (type.includes('text/html')) {
+    console.error(`API_URL_WRONG: ${API_BASE}${path} returned a web page. Check VITE_API_URL on the web service and redeploy it.`);
+    throw new ApiError('API_URL_WRONG', res.status, 'The site cannot reach its server. Please try again later.');
+  }
   return (type.includes('application/json') ? await res.json() : await res.text()) as T;
 }
 
