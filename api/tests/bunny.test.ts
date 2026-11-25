@@ -35,7 +35,8 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return new Response(null, { status: 201 });
     }
     const f = files.get(url);
-    return f ? new Response(new Uint8Array(f.body), { status: 200, headers: { 'content-type': f.type } }) : new Response(null, { status: 404 });
+    // Real Bunny Storage answers application/octet-stream whatever was uploaded.
+    return f ? new Response(new Uint8Array(f.body), { status: 200, headers: { 'content-type': 'application/octet-stream' } }) : new Response(null, { status: 404 });
   }
   if (url.startsWith('https://video.bunnycdn.com/library/123/videos/')) {
     return Response.json({ status: streamStatus, length: 321, height: 1080, availableResolutions: '720p,1080p' });
@@ -75,6 +76,7 @@ describe('Bunny Storage', () => {
     const ok = await anon().get(url.pathname + url.search);
     expect(ok.status).toBe(200);
     expect(ok.headers['cache-control']).toBe('private, no-store');
+    expect(ok.headers['content-type']).toBe('image/webp'); // from the file name, so the <img> shows
     expect(Buffer.from(ok.body).toString()).toBe('slip-bytes');
 
     const forged = await anon().get(`${url.pathname}?exp=${url.searchParams.get('exp')}&sig=nope`);

@@ -20,7 +20,7 @@ onMounted(async () => {
 <template>
   <div class="att rounded">
     <div v-if="failed" class="pa-3 text-caption text-muted">Image unavailable</div>
-    <v-img v-else-if="url" :src="url" width="160" height="120" cover alt="Attached image" class="cursor-pointer" @click="open = true" />
+    <v-img v-else-if="url" :src="url" width="160" height="120" cover alt="Attached image" class="cursor-pointer" @click="open = true" @error="failed = true" />
     <v-skeleton-loader v-else type="image" width="160" height="120" color="surface" />
     <v-dialog v-model="open" max-width="1000">
       <v-img v-if="url" :src="url" alt="Attached image" max-height="85vh" contain />

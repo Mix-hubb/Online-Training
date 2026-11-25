@@ -4,6 +4,7 @@
 //                                           Bunny Storage is set up, else (or if not found there) from local disk.
 import express, { Router } from 'express';
 import fs from 'node:fs';
+import path from 'node:path';
 import { config } from '../../config.js';
 import { localPaths, verifyPrivate } from '../../providers/storage/LocalStorage.js';
 import { readBunnyPrivate } from '../../providers/storage/BunnyStorage.js';
@@ -25,7 +26,9 @@ filesRouter.get(/^\/files\/private\/(.+)$/, async (req, res, next) => {
     res.setHeader('Cache-Control', 'private, no-store');
     if (config.bunnyStorageEnabled) {
       const file = await readBunnyPrivate(key);
-      if (file) return res.type(file.type).send(file.body);
+      // Type from the file name, not from Bunny (it answers application/octet-stream): with nosniff, the browser
+      // refuses to show a cross-origin <img> whose type is not an image.
+      if (file) return res.type(path.extname(key)).send(file.body);
     }
     let p: string;
     try {

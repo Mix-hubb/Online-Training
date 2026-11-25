@@ -51,9 +51,9 @@ export class BunnyStorage implements FileStorage {
 }
 
 /** Reads a private file for /files/private. null when it is not there. */
-export async function readBunnyPrivate(key: string): Promise<{ body: Buffer; type: string } | null> {
+export async function readBunnyPrivate(key: string): Promise<{ body: Buffer } | null> {
   const res = await fetch(endpoint('private', key), { headers: { AccessKey: zone('private').key } });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Bunny Storage read failed: ${res.status}`);
-  return { body: Buffer.from(await res.arrayBuffer()), type: res.headers.get('content-type') ?? 'application/octet-stream' };
+  return { body: Buffer.from(await res.arrayBuffer()) };
 }
