@@ -49,13 +49,14 @@ export async function startCheckout(user: User, courseId: string, method: PayMet
     return { orderId: order.id, url: charge.checkoutUrl };
   }
 
+  // Check before creating the order, or every click while Stripe is not set up leaves a stray PENDING order.
+  if (!stripe && !config.DEV_FAKE_PAYMENTS) throw new AppError('PAYMENT_METHOD_UNAVAILABLE', 503, 'Card payments are not set up');
   const order = await prisma.order.create({
     data: { userId: user.id, courseId, amountMinor: option.amountMinor, currency, provider: 'STRIPE', method },
   });
   const successUrl = `${config.WEB_URL}/checkout/return?session_id={CHECKOUT_SESSION_ID}`;
 
   if (!stripe) {
-    if (!config.DEV_FAKE_PAYMENTS) throw new AppError('PAYMENT_METHOD_UNAVAILABLE', 503, 'Card payments are not set up');
     // Local development only: pretend Stripe confirmed the payment.
     const sessionId = `dev_${order.id}`;
     await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: sessionId } });
