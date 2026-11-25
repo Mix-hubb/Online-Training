@@ -58,9 +58,9 @@ Open the service → **Settings**:
 The config file runs `npm run build` (Prisma client + TypeScript), runs `prisma migrate deploy` before every
 deploy (creates and updates the tables), then `npm start`, and checks `/health`.
 
-**Volume (uploaded images):** right-click the service → **Attach Volume**, mount path `/app/uploads`.
-Without it, uploaded banners, covers and slips are lost on every deploy.
-(Or use Bunny Storage instead: set the `BUNNY_STORAGE_*` variables.)
+**Uploaded images:** use Bunny Storage (step 7): images are served from Bunny's CDN and survive every deploy.
+Without Bunny, attach a Volume instead (right-click the service → **Attach Volume**, mount path `/app/uploads`),
+or uploaded banners, covers and slips are lost on every deploy.
 
 **Variables** (service → Variables):
 
@@ -77,7 +77,8 @@ Without it, uploaded banners, covers and slips are lost on every deploy.
 | `RESEND_API_KEY` | from Resend. Empty = emails are only logged. |
 | `GOOGLE_CLIENT_ID` | same as the web's `VITE_GOOGLE_CLIENT_ID`. Empty = no Google sign-in. |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | from Stripe (live keys only when ready to sell) |
-| `BUNNY_STREAM_*` | Bunny Stream library for lesson videos |
+| `BUNNY_STREAM_*`, `BUNNY_CDN_HOSTNAME` | lesson videos (step 7) |
+| `BUNNY_STORAGE_*` | images on Bunny's CDN (step 7) |
 
 `API_URL` and `WEB_URL` must be the final addresses: image links are saved with `API_URL` in them.
 If the address changes later, images uploaded before the change keep the old address.
@@ -139,11 +140,52 @@ login cookie. With the same company domain, login works in every browser.
   (events `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
   `checkout.session.async_payment_failed`, `checkout.session.expired`) → copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
 
+## 7. Bunny: images and videos
+
+Everything is in one Bunny account (bunny.net): **Storage** for images, **Stream** for lesson videos.
+Pick the same region everywhere (e.g. Singapore). All values go in the **api** service Variables; set a whole
+group or none of it: with only part of a group the api refuses to start and names what is missing.
+
+### 7A. Images (Bunny Storage), 2 storage zones
+
+1. **Storage → Add Storage Zone**, name e.g. `ot-public`, main region Singapore. Open it → **FTP & API Access**:
+   - `BUNNY_STORAGE_ZONE` = the zone name
+   - `BUNNY_STORAGE_KEY` = **Password** (not the read-only one)
+   - `BUNNY_STORAGE_HOST` = **Hostname**, e.g. `sg.storage.bunnycdn.com` (the default `storage.bunnycdn.com` is Falkenstein)
+2. In that zone: **Connected Pull Zones → Connect Pull Zone → Add Pull Zone** (name e.g. `ot-images`).
+   `BUNNY_STORAGE_CDN_URL` = its hostname, e.g. `https://ot-images.b-cdn.net`.
+3. **Add Storage Zone** again, name e.g. `ot-private`, same region, and do **not** connect a pull zone to it.
+   Payment slips and chat photos go here; nobody can open them from the internet. The api reads them and gives
+   short-lived links only to people allowed to see them.
+   - `BUNNY_STORAGE_PRIVATE_ZONE` = its name
+   - `BUNNY_STORAGE_PRIVATE_KEY` = its **Password**
+
+New uploads then go to Bunny. Images uploaded before keep their old api address (served from the volume while
+it exists): upload them again to move them. After that the Volume is no longer needed.
+
+### 7B. Videos (Bunny Stream)
+
+1. **Stream → Add Video Library**, name e.g. `Online Training`, Singapore.
+2. **Encoding:** turn on 720p and 1080p (and 2160p if any course allows 4K). Turn **MP4 fallback off**.
+3. **API** tab:
+   - `BUNNY_STREAM_LIBRARY_ID` = **Video Library ID**
+   - `BUNNY_STREAM_API_KEY` = **API Key**
+   - `BUNNY_CDN_HOSTNAME` = **CDN Hostname**, e.g. `vz-xxxxxxxx-xxx.b-cdn.net`
+   - **Webhook URL** = `https://api.<your-domain>/bunny/webhook` (lessons switch to "ready" by themselves
+     when encoding finishes)
+4. **Security** tab: turn on **CDN token authentication** and copy its key → `BUNNY_STREAM_TOKEN_KEY`.
+   Videos then play only through the short links the api gives to enrolled learners.
+   Leave **Allowed domains** empty, or list the web address (`www.<your-domain>`).
+5. Redeploy the api, open a lesson as admin and upload a video. It shows "processing" until Bunny has
+   encoded it (minutes, depending on length).
+
 ## Check after each deploy
 
 - `https://api.<your-domain>/health` returns `{"ok":true}`.
 - The home page loads, and opening `/login` directly (not by clicking) works.
-- Log in as admin, upload a banner, redeploy the api, and check the banner still shows (volume works).
+- Log in as admin, upload a banner: its address starts with the Bunny CDN URL (or, without Bunny, redeploy the
+  api and check it still shows: the volume works).
+- Play a lesson video as a learner.
 
 ## When a build fails
 
@@ -151,6 +193,9 @@ login cookie. With the same company domain, login works in every browser.
   the Root Directory is not set. Set it, then use **Deploy latest commit** (not Redeploy on the old one:
   Redeploy re-uses the old settings).
 - `Invalid environment` in the api log: a required variable is missing (see the table in step 2).
+- `Bunny is partly set up. Also set: ...` in the api log: add the variables it lists (step 7), or remove the group.
+- Video stays "processing": the Webhook URL is missing in the Stream library, or Bunny is still encoding.
+  A video that never plays (403): `BUNNY_STREAM_TOKEN_KEY` is not the CDN token authentication key of that library.
 - `Environment variable not found: DIRECT_URL` during the pre-deploy step: add `DIRECT_URL`.
 - `prepared statement "s0" already exists` (Supabase): `DATABASE_URL` is the Transaction pooler without
   `?pgbouncer=true`.

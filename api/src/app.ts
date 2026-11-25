@@ -28,6 +28,7 @@ import { instructorRouter } from './modules/instructor/index.js';
 import { partnerRouter } from './modules/partner/partner.routes.js';
 import { filesRouter } from './modules/files/files.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
+import { bunnyWebhookRouter } from './modules/video/bunny-webhook.routes.js';
 import { config } from './config.js';
 
 /** Routes whose JSON body carries base64 images (see lib/attachments.ts). */
@@ -62,7 +63,8 @@ export function createApp() {
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
 
-  app.use(filesRouter);          // /files/public/*, /files/private/* (signed; local storage only)
+  app.use(filesRouter);          // /files/public/* (local disk), /files/private/* (signed; local disk or Bunny private zone)
+  app.use(bunnyWebhookRouter);   // /bunny/webhook (Bunny Stream: video encoded / failed)
   app.use('/auth', authRouter);
   app.use(catalogRouter);        // /courses, /categories, /tags
   app.use(landingRouter);        // /landing

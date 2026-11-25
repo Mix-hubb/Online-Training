@@ -25,6 +25,12 @@ export function verifyPrivate(key: string, exp: number, sig: string): boolean {
   return want.length === got.length && crypto.timingSafeEqual(want, got);
 }
 
+/** Signed /files/private link on the api (used by local disk and by Bunny's private zone). */
+export function signedApiUrl(key: string, ttlSec: number): string {
+  const exp = Math.floor(Date.now() / 1000) + ttlSec;
+  return `${config.API_URL}/files/private/${key}?exp=${exp}&sig=${signPrivate(key, exp)}`;
+}
+
 export const localPaths = {
   public: path.join(root, 'public'),
   private: path.join(root, 'private'),
@@ -46,8 +52,7 @@ export class LocalStorage implements FileStorage {
   }
 
   async signedUrl(key: string, ttlSec: number): Promise<string> {
-    const exp = Math.floor(Date.now() / 1000) + ttlSec;
-    return `${config.API_URL}/files/private/${key}?exp=${exp}&sig=${signPrivate(key, exp)}`;
+    return signedApiUrl(key, ttlSec);
   }
 
   async delete(key: string, visibility: 'public' | 'private'): Promise<void> {

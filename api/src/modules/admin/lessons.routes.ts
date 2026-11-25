@@ -106,29 +106,35 @@ lessonsAdminRouter.post(
 lessonsAdminRouter.get(
   '/lessons/:id/video-status',
   h(async (req, res) => {
-    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id }, include: { course: true } });
+    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id }, select: { id: true, bunnyVideoId: true } });
     if (!lesson) throw new AppError('NOT_FOUND', 404);
     if (!lesson.bunnyVideoId) return res.json({ status: 'NONE' });
-    const info = await video.getStatus(lesson.bunnyVideoId);
-    const sourceHeight = info.sourceHeight ?? lesson.sourceHeight;
-    const heights = allowedRenditions(sourceHeight, lesson.course.allow4k);
-    await prisma.$transaction([
-      prisma.lesson.update({
-        where: { id: lesson.id },
-        data: {
-          videoStatus: info.status,
-          ...(info.durationSec ? { durationSec: info.durationSec } : {}),
-          ...(sourceHeight ? { sourceHeight } : {}),
-        },
-      }),
-      ...heights.map((height) =>
-        prisma.lessonRendition.upsert({
-          where: { lessonId_height: { lessonId: lesson.id, height } },
-          create: { lessonId: lesson.id, height, ready: Boolean(info.readyHeights?.includes(height)) },
-          update: { ready: Boolean(info.readyHeights?.includes(height)) },
-        }),
-      ),
-    ]);
-    res.json({ status: info.status, durationSec: info.durationSec ?? lesson.durationSec, sourceHeight, renditions: heights });
+    res.json(await syncVideoStatus(lesson.id));
   }),
 );
+
+/** Asks the video provider for a lesson's status and saves it (admin page poll and the Bunny webhook). */
+export async function syncVideoStatus(lessonId: string) {
+  const lesson = await prisma.lesson.findUniqueOrThrow({ where: { id: lessonId }, include: { course: true } });
+  const info = await video.getStatus(lesson.bunnyVideoId!);
+  const sourceHeight = info.sourceHeight ?? lesson.sourceHeight;
+  const heights = allowedRenditions(sourceHeight, lesson.course.allow4k);
+  await prisma.$transaction([
+    prisma.lesson.update({
+      where: { id: lesson.id },
+      data: {
+        videoStatus: info.status,
+        ...(info.durationSec ? { durationSec: info.durationSec } : {}),
+        ...(sourceHeight ? { sourceHeight } : {}),
+      },
+    }),
+    ...heights.map((height) =>
+      prisma.lessonRendition.upsert({
+        where: { lessonId_height: { lessonId: lesson.id, height } },
+        create: { lessonId: lesson.id, height, ready: Boolean(info.readyHeights?.includes(height)) },
+        update: { ready: Boolean(info.readyHeights?.includes(height)) },
+      }),
+    ),
+  ]);
+  return { status: info.status, durationSec: info.durationSec ?? lesson.durationSec, sourceHeight, renditions: heights };
+}
