@@ -1,0 +1,128 @@
+# Deploy on Railway
+
+One Railway project with three parts: **Postgres**, **api** (Express) and **web** (the built Vue site).
+Both services build from this GitHub repo (`main`); each one uses its own folder.
+
+```
+Railway project
+├── Postgres              database
+├── api   (folder api/)   https://api.<your-domain>   or  <name>.up.railway.app
+└── web   (folder web/)   https://www.<your-domain>   or  <name>.up.railway.app
+```
+
+The build and start settings are in the repo: `api/railway.json` and `web/railway.json`.
+
+## 1. Create the project and the database
+
+1. Railway: **New Project → Deploy from GitHub repo →** this repository.
+   Railway creates one service. It will fail until step 2 is done; that is expected.
+2. In the project: **New → Database → PostgreSQL**.
+
+## 2. api service
+
+Open the service → **Settings**:
+
+| Setting | Value |
+|---|---|
+| Source → Root Directory | `api` |
+| Config-as-code → Railway Config File | `/api/railway.json` |
+| Networking → Generate Domain | yes (or a custom domain, step 5) |
+| Name (top of Settings) | `api` |
+
+The config file runs `npm run build` (Prisma client + TypeScript), runs `prisma migrate deploy` before every
+deploy (creates and updates the tables), then `npm start`, and checks `/health`.
+
+**Volume (uploaded images):** right-click the service → **Attach Volume**, mount path `/app/uploads`.
+Without it, uploaded banners, covers and slips are lost on every deploy.
+(Or use Bunny Storage instead: set the `BUNNY_STORAGE_*` variables.)
+
+**Variables** (service → Variables):
+
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `JWT_SECRET` | a long random string (at least 32 characters). Never reuse the local one. |
+| `API_URL` | the api address, e.g. `https://api.<your-domain>` (used in links to uploaded images) |
+| `WEB_URL` | the web address, e.g. `https://www.<your-domain>` (CORS, email links, Stripe return) |
+| `COOKIE_DOMAIN` | leave empty |
+| `MAIL_FROM` | `Online Training <no-reply@<your-domain>>` (domain verified in Resend) |
+| `RESEND_API_KEY` | from Resend. Empty = emails are only logged. |
+| `GOOGLE_CLIENT_ID` | same as the web's `VITE_GOOGLE_CLIENT_ID`. Empty = no Google sign-in. |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | from Stripe (live keys only when ready to sell) |
+| `BUNNY_STREAM_*` | Bunny Stream library for lesson videos |
+
+`API_URL` and `WEB_URL` must be the final addresses: image links are saved with `API_URL` in them.
+If the address changes later, images uploaded before the change keep the old address.
+
+## 3. web service
+
+**New → GitHub Repo →** the same repository, then **Settings**:
+
+| Setting | Value |
+|---|---|
+| Source → Root Directory | `web` |
+| Config-as-code → Railway Config File | `/web/railway.json` |
+| Networking → Generate Domain | yes (or a custom domain, step 5) |
+| Name | `web` |
+
+It builds with `npm run build` and serves `dist/` with `web/server.mjs` (no extra packages): every page route
+returns the app, hashed files are cached for a year, gzip on.
+
+**Variables** (read at **build** time: after changing one, redeploy the web service):
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | the api address, e.g. `https://api.<your-domain>` (no trailing slash) |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID, or empty |
+
+## 4. First admin
+
+The production database starts empty (the demo seed is for local use only). After the api deploy is green:
+
+1. Install the Railway CLI and run `railway login`, then `railway link` in this repo and pick the project.
+2. Open a shell in the api service and create the admin:
+   ```
+   railway ssh --service api
+   npm run create-admin -- --email you@company.com --name "Your Name"
+   ```
+3. It prints a temporary password once. Log in on the site with it; you are asked to set a new one.
+
+An email that already has a learner account: add `--promote` (it keeps its own password).
+
+## 5. Company domain
+
+Use one domain for both, e.g. `www.<your-domain>` → web and `api.<your-domain>` → api.
+This matters: two `*.up.railway.app` addresses count as different sites, and Safari / iPhone then block the
+login cookie. With the same company domain, login works in every browser.
+
+1. Each service → **Settings → Networking → Custom Domain** → enter the name. Railway shows a CNAME
+   (and sometimes a TXT record to verify).
+2. Add those records at the domain registrar (Cloudflare: set them to **DNS only**, grey cloud, at least until
+   Railway shows the certificate as issued).
+3. For the bare domain (`<your-domain>` without www) set a redirect to `www` at the registrar or Cloudflare.
+4. Update the variables and redeploy both: api `API_URL`, `WEB_URL`; web `VITE_API_URL`.
+
+## 6. Outside services
+
+- **Google sign-in:** Google Cloud Console → Credentials → the OAuth client → Authorized JavaScript origins:
+  add `https://www.<your-domain>`.
+- **Resend:** Domains → add `<your-domain>` → add its DNS records (SPF, DKIM) → wait for Verified.
+- **Stripe:** Developers → Webhooks → endpoint `https://api.<your-domain>/stripe/webhook`
+  (events `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`, `checkout.session.expired`) → copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+## Check after each deploy
+
+- `https://api.<your-domain>/health` returns `{"ok":true}`.
+- The home page loads, and opening `/login` directly (not by clicking) works.
+- Log in as admin, upload a banner, redeploy the api, and check the banner still shows (volume works).
+
+## When a build fails
+
+- "Railpack could not determine how to build the app" and the log lists `api/`, `web/`, `docs/`:
+  the Root Directory is not set. Set it, then use **Deploy latest commit** (not Redeploy on the old one:
+  Redeploy re-uses the old settings).
+- `Invalid environment` in the api log: a required variable is missing (see the table in step 2).
+- The site loads but every request fails: `VITE_API_URL` is wrong, or `WEB_URL` on the api does not match the
+  web address exactly (CORS).
