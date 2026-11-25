@@ -253,7 +253,7 @@ export interface ThreadSummary {
   lastMessageAt: string;
   learner?: { id: string; name: string; avatarUrl: string | null };
   course: { id: string; title: string; slug: string } | null;
-  lastMessage: { body: string; at: string } | null;
+  lastMessage: { body: string; mine: boolean; at: string } | null;
   unread: number;
 }
 

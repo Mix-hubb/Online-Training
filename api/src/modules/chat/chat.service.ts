@@ -82,7 +82,10 @@ export async function threadList(where: Prisma.SupportThreadWhereInput, side: Si
       lastMessageAt: t.lastMessageAt,
       learner: side === 'staff' ? t.user : undefined,
       course: t.course,
-      lastMessage: t.messages[0] ? { body: t.messages[0].body.slice(0, 140), mine: undefined, at: t.messages[0].createdAt } : null,
+      // mine: sent by this side (learner, or any staff member), so the list can say "You: ..."
+      lastMessage: t.messages[0]
+        ? { body: t.messages[0].body.slice(0, 140), mine: (t.messages[0].senderId === t.userId) === (side === 'learner'), at: t.messages[0].createdAt }
+        : null,
       unread: unread.get(t.id) ?? 0,
     }));
 }
