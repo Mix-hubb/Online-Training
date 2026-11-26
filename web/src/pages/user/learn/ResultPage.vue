@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Result (spec 6.5), four states: passed (+certificate, review), waiting for instructor,
-// not passed with attempts left (retry), not passed and no attempts left (lessons restarted).
+// not passed (retry: review the lessons and try again any time). Using every attempt gives a new set of attempts;
+// lesson progress is kept (changed 2026-11-26, no more restarting the lessons).
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import EmptyState from '@/components/common/EmptyState.vue';
@@ -39,16 +40,16 @@ const state = computed(() => {
   if (!a || !ov.value) return null;
   if (a.status === 'PENDING_REVIEW') return 'pending';
   if (a.passed) return 'passed';
-  if (ov.value.cycle > a.cycle) return 'restarted';
-  return ov.value.attemptsLeft > 0 ? 'retry' : 'restarted';
+  return 'retry';
 });
-const tone = computed(() => ({ passed: 'success', pending: 'info', retry: 'warning', restarted: 'danger' })[state.value ?? 'pending']);
-const eyebrow = computed(() => ({ passed: 'Passed', pending: 'Waiting for grading', retry: 'Not passed yet', restarted: 'No attempts left' })[state.value ?? 'pending']);
+/** This was the last attempt of its round, so a new set of attempts started. */
+const newRound = computed(() => !!attempt.value && !!ov.value && ov.value.cycle > attempt.value.cycle);
+const tone = computed(() => ({ passed: 'success', pending: 'info', retry: 'warning' })[state.value ?? 'pending']);
+const eyebrow = computed(() => ({ passed: 'Passed', pending: 'Waiting for grading', retry: 'Not passed yet' })[state.value ?? 'pending']);
 const heading = computed(() => {
   if (state.value === 'passed') return 'You passed the final test';
   if (state.value === 'pending') return 'Your instructor is checking your answers';
-  if (state.value === 'retry') return `You need ${attempt.value?.passPercent ?? 0}% to pass`;
-  return 'The lessons have restarted';
+  return `You need ${attempt.value?.passPercent ?? 0}% to pass`;
 });
 </script>
 
@@ -78,8 +79,10 @@ const heading = computed(() => {
             </p>
           </div>
         </div>
-        <p v-if="state === 'retry'" class="hsub">Correct answers stay hidden until you pass. Review the lessons, then try again.</p>
-        <p v-if="state === 'restarted'" class="hsub">The lessons have restarted. Watch them again to unlock the test with {{ ov!.maxAttempts }} new attempts.</p>
+        <p v-if="state === 'retry'" class="hsub">
+          <template v-if="newRound">You used all your attempts, so you have {{ ov!.maxAttempts }} new ones. </template>
+          Your lessons are kept: rewatch any of them, then take the test again whenever you are ready. Correct answers stay hidden until you pass.
+        </p>
         <div class="d-flex flex-wrap ga-3">
           <template v-if="state === 'passed'">
             <v-btn v-if="cert" color="primary" min-height="48" :to="`/certificates/${cert.number}`">View certificate</v-btn>
@@ -89,10 +92,9 @@ const heading = computed(() => {
           </template>
           <v-btn v-else-if="state === 'pending'" variant="outlined" min-height="48" :to="`/learn/${slug}`">Back to the course</v-btn>
           <template v-else-if="state === 'retry'">
-            <v-btn color="primary" min-height="48" :to="`/learn/${slug}/quiz`">Try again ({{ ov!.attemptsLeft }} left)</v-btn>
-            <v-btn variant="outlined" min-height="48" :to="`/learn/${slug}`">Review lessons</v-btn>
+            <v-btn color="primary" min-height="48" prepend-icon="mdi-play-circle-outline" :to="`/learn/${slug}`">Review lessons</v-btn>
+            <v-btn variant="outlined" min-height="48" :to="`/learn/${slug}/quiz`">Take the test again ({{ ov!.attemptsLeft }} left)</v-btn>
           </template>
-          <v-btn v-else color="primary" min-height="48" :to="`/learn/${slug}`">Start the lessons again</v-btn>
         </div>
       </section>
 

@@ -11,7 +11,7 @@ describe('attempts and cycle reset', () => {
     return as(userId).post(`/attempts/${start.body.id}/submit`).send({ answers: [{ questionId: ids.questionId, optionId: ids.wrong }] });
   }
 
-  it('last failed attempt -> cycle + 1', async () => {
+  it('last failed attempt -> new attempts, lessons kept', async () => {
     const u = await makeUser();
     const c = await makeCourse({ quiz: { maxAttempts: 2, passPercent: 100 } });
     const e = await enroll(u.id, c.id);
@@ -22,13 +22,18 @@ describe('attempts and cycle reset', () => {
     const after = await prisma.enrollment.findUniqueOrThrow({ where: { id: e.id } });
     expect(after.cycle).toBe(2);
     expect(after.status).toBe('IN_PROGRESS');
-    // Old attempts kept; new cycle has no completed lessons, so the quiz is locked again.
+    // Old attempts kept for history; lessons stay completed, so the test can be taken again right away.
     expect(await prisma.quizAttempt.count({ where: { enrollmentId: e.id } })).toBe(2);
     const learn = await as(u.id).get(`/courses/${c.slug}/learn`);
-    expect(learn.body.lessons.every((l: { completed: boolean }) => !l.completed)).toBe(true);
-    expect((await as(u.id).post(`/courses/${c.id}/quiz/start`)).body.error.code).toBe('QUIZ_LOCKED');
+    expect(learn.body.lessons.length).toBeGreaterThan(0);
+    expect(learn.body.lessons.every((l: { completed: boolean }) => l.completed)).toBe(true);
+    const mine = (await as(u.id).get('/me/courses')).body.find((x: { course: { id: string } }) => x.course.id === c.id);
+    expect(mine).toMatchObject({ status: 'READY_FOR_TEST', percent: 100 });
+    const again = await as(u.id).post(`/courses/${c.id}/quiz/start`);
+    expect(again.status).toBe(201);
+    expect(again.body.cycle).toBe(2);
     const notes = await as(u.id).get('/notifications');
-    expect(notes.body.items.some((n: { text: string }) => n.text.includes('restarted'))).toBe(true);
+    expect(notes.body.items.some((n: { text: string }) => n.text.includes('new attempts') && n.text.includes('lessons are kept'))).toBe(true);
   });
 
   it('new cycle gets fresh attempts', async () => {
@@ -37,7 +42,6 @@ describe('attempts and cycle reset', () => {
     const e = await enroll(u.id, c.id);
     await completeAllLessons(e.id);
     await fail(u.id, c);
-    await completeAllLessons(e.id); // cycle 2 lessons
     const start = await as(u.id).post(`/courses/${c.id}/quiz/start`);
     expect(start.status).toBe(201);
     expect(start.body.cycle).toBe(2);

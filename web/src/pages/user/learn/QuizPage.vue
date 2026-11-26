@@ -246,7 +246,7 @@ function essay(text: string) {
         <ul class="rules">
           <li>Your answers are saved as you go. If you close the page, you can come back to the same attempt.</li>
           <li v-if="ov.timeLimitMin">When the time runs out, the test is submitted with the answers saved so far.</li>
-          <li>If you use every attempt without passing, the lessons restart and you get {{ ov.maxAttempts }} new attempts.</li>
+          <li>If you do not pass, you can rewatch the lessons and try again whenever you are ready. Using every attempt gives you {{ ov.maxAttempts }} new ones; your lessons are kept.</li>
         </ul>
         <div><v-btn color="primary" min-height="50" class="px-7" :loading="busy" :disabled="ov.attemptsLeft <= 0" @click="start">{{ ov.history.length ? 'Try again' : 'Start the test' }}</v-btn></div>
       </section>

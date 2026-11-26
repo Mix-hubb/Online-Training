@@ -224,7 +224,7 @@ model Enrollment {
   userId       String
   courseId     String
   status       EnrollmentStatus @default(IN_PROGRESS)
-  cycle        Int              @default(1) // +1 each time user fails all attempts and must restart
+  cycle        Int              @default(1) // +1 each time user fails all attempts: a new set of attempts (lesson progress is carried over)
   lastLessonId String?
   enrolledAt   DateTime         @default(now())
   completedAt  DateTime?

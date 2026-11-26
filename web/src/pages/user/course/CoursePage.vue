@@ -167,7 +167,7 @@ async function playIntro() {
             <div class="fact"><div class="fact-label">Time limit</div><div class="fact-value">{{ course.quiz.timeLimitMin ? `${course.quiz.timeLimitMin} min` : 'None' }}</div></div>
             <div class="fact"><div class="fact-label">Attempts</div><div class="fact-value">{{ course.quiz.maxAttempts }}</div></div>
           </div>
-          <p class="text-body-2 text-muted mb-0">Pass to get your certificate. If you use all attempts without passing, you restart the course lessons. Your purchase stays.</p>
+          <p class="text-body-2 text-muted mb-0">Pass to get your certificate. If you do not pass, rewatch the lessons and try again whenever you like. You never have to restart the course.</p>
         </section>
 
         <CourseReviews
