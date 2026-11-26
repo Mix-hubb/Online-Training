@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 // DATABASE_URL: what the app uses. On Supabase: the pooled "Transaction pooler" URL (port 6543, ?pgbouncer=true).

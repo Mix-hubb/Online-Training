@@ -34,7 +34,7 @@ export async function viewAttempt(userId: string, attemptId: string) {
     await submitAttempt(userId, attemptId);
     a = await loadOwnAttempt(userId, attemptId);
   }
-  const e = await prisma.enrollment.findUniqueOrThrow({ where: { id: a.enrollmentId } });
+  const e = a.enrollment; // loaded with the attempt (fresh after the auto-submit above)
   return serializeAttempt(a, {
     learnerHasPassed: e.status === 'COMPLETED',
     attemptsLeft: await attemptsLeft(e.id, e.cycle, a.quiz.maxAttempts),
@@ -43,13 +43,17 @@ export async function viewAttempt(userId: string, attemptId: string) {
 
 /** Quiz intro page data: settings, lock, attempts used/left, history, open attempt. */
 export async function quizOverview(userId: string, courseId: string) {
-  const e = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId } } });
+  // Independent reads in one round (attempts are found through the enrollment's user + course), then the
+  // lessons done in the enrollment's current cycle. The errors are checked in the same order as before.
+  const [e, quiz, lessons, attempts] = await Promise.all([
+    prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId } } }),
+    prisma.quiz.findUnique({ where: { courseId }, include: { _count: { select: { questions: true } } } }),
+    prisma.lesson.findMany({ where: { courseId }, orderBy: { order: 'asc' }, select: { id: true } }),
+    prisma.quizAttempt.findMany({ where: { enrollment: { userId, courseId } }, orderBy: { startedAt: 'desc' } }),
+  ]);
   if (!e) throw new AppError('NOT_ENROLLED', 403);
-  const quiz = await prisma.quiz.findUnique({ where: { courseId }, include: { _count: { select: { questions: true } } } });
   if (!quiz) throw new AppError('NOT_FOUND', 404);
-  const lessons = await prisma.lesson.findMany({ where: { courseId }, orderBy: { order: 'asc' }, select: { id: true } });
   const unlocked = quizUnlocked(lessons.map((l) => l.id), await completedLessonIds(e));
-  const attempts = await prisma.quizAttempt.findMany({ where: { enrollmentId: e.id }, orderBy: { startedAt: 'desc' } });
   const cur = attempts.filter((a) => a.cycle === e.cycle);
   return {
     quizId: quiz.id,

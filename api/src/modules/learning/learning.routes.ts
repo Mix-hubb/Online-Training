@@ -13,9 +13,9 @@ import { body } from '../../lib/validate.js';
 import { requireAuth, requireLearner } from '../../middleware/auth.js';
 import { isAssigned } from '../../middleware/roles.js';
 import { video, allowedRenditions } from '../../providers/video/index.js';
-import { enrollFree, getEnrollmentOrThrow, myCourses } from './enrollment.service.js';
+import { enrollFree, myCourses } from './enrollment.service.js';
 import { lessonStates, quizUnlocked } from './lock.service.js';
-import { assertLessonUnlocked, completedLessonIds, recordProgress } from './progress.service.js';
+import { assertLessonUnlocked, recordProgress } from './progress.service.js';
 import { progressBody } from './learning.schemas.js';
 
 export const learningRouter = Router();
@@ -56,28 +56,30 @@ learningRouter.get(
   ...auth,
   h(async (req, res) => {
     const user = req.user!;
-    const course = await prisma.course.findUnique({
-      where: { slug: req.params.slug },
-      include: {
-        lessons: { orderBy: { order: 'asc' } },
-        quiz: { select: { id: true, passPercent: true, timeLimitMin: true, maxAttempts: true, _count: { select: { questions: true } } } },
-      },
-    });
+    // The course and the learner's enrollment (looked up by the course slug) in one round of queries.
+    const [course, enrollment] = await Promise.all([
+      prisma.course.findUnique({
+        where: { slug: req.params.slug },
+        include: {
+          lessons: { orderBy: { order: 'asc' } },
+          quiz: { select: { id: true, passPercent: true, timeLimitMin: true, maxAttempts: true, _count: { select: { questions: true } } } },
+        },
+      }),
+      prisma.enrollment.findFirst({ where: { userId: user.id, course: { slug: req.params.slug } } }),
+    ]);
     if (!course) throw new AppError('NOT_FOUND', 404);
-    const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: user.id, courseId: course.id } } });
     const preview = !enrollment && (await staffCanPreview(user.id, user.role, course.id));
     if (!enrollment && !preview) throw new AppError('NOT_ENROLLED', 403);
     if (enrollment && course.status === 'DRAFT' && user.role !== 'ADMIN') throw new AppError('NOT_FOUND', 404);
 
     const ids = course.lessons.map((l) => l.id);
-    const done = enrollment ? await completedLessonIds(enrollment) : new Set(ids);
-    const progress = enrollment
-      ? await prisma.lessonProgress.findMany({ where: { enrollmentId: enrollment.id, cycle: enrollment.cycle } })
-      : [];
+    const [progress, attemptsUsed] = await Promise.all([
+      enrollment ? prisma.lessonProgress.findMany({ where: { enrollmentId: enrollment.id, cycle: enrollment.cycle } }) : [],
+      enrollment && course.quiz ? prisma.quizAttempt.count({ where: { enrollmentId: enrollment.id, cycle: enrollment.cycle } }) : 0,
+    ]);
+    // The same set completedLessonIds() returns (completed rows of the current cycle), from the rows already loaded.
+    const done = enrollment ? new Set(progress.filter((p) => p.completed).map((p) => p.lessonId)) : new Set(ids);
     const states = lessonStates(ids, done);
-    const attemptsUsed = enrollment && course.quiz
-      ? await prisma.quizAttempt.count({ where: { enrollmentId: enrollment.id, cycle: enrollment.cycle } })
-      : 0;
 
     res.json({
       preview,
@@ -120,18 +122,25 @@ learningRouter.get(
   ...auth,
   h(async (req, res) => {
     const user = req.user!;
-    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id }, include: { course: true, renditions: true } });
+    // The lesson and the learner's enrollment in its course, in one round of queries.
+    const [lesson, enrollment] = await Promise.all([
+      prisma.lesson.findUnique({ where: { id: req.params.id }, include: { course: true, renditions: true } }),
+      prisma.enrollment.findFirst({ where: { userId: user.id, course: { lessons: { some: { id: req.params.id } } } } }),
+    ]);
     if (!lesson) throw new AppError('NOT_FOUND', 404);
-    const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: user.id, courseId: lesson.courseId } } });
-    if (enrollment) await assertLessonUnlocked(enrollment, lesson);
-    else if (!(await staffCanPreview(user.id, user.role, lesson.courseId))) throw new AppError('NOT_ENROLLED', 403);
+    const [, progress] = await Promise.all([
+      enrollment
+        ? assertLessonUnlocked(enrollment, lesson)
+        : staffCanPreview(user.id, user.role, lesson.courseId).then((ok) => {
+            if (!ok) throw new AppError('NOT_ENROLLED', 403);
+          }),
+      enrollment
+        ? prisma.lessonProgress.findUnique({
+            where: { enrollmentId_lessonId_cycle: { enrollmentId: enrollment.id, lessonId: lesson.id, cycle: enrollment.cycle } },
+          })
+        : null,
+    ]);
     if (!lesson.bunnyVideoId || lesson.videoStatus !== 'READY') throw new AppError('NOT_FOUND', 404, 'Video is not ready yet');
-
-    const progress = enrollment
-      ? await prisma.lessonProgress.findUnique({
-          where: { enrollmentId_lessonId_cycle: { enrollmentId: enrollment.id, lessonId: lesson.id, cycle: enrollment.cycle } },
-        })
-      : null;
     const allowed = allowedRenditions(lesson.sourceHeight, lesson.course.allow4k);
     const ready = lesson.renditions.filter((r) => r.ready).map((r) => r.height);
     const qualities = ready.length ? allowed.filter((hgt) => ready.includes(hgt)) : allowed;
@@ -150,9 +159,13 @@ learningRouter.put(
   ...auth,
   h(async (req, res) => {
     const input = body(req, progressBody);
-    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id } });
+    // Sent every few seconds while a video plays: the lesson and the enrollment in its course in one round.
+    const [lesson, enrollment] = await Promise.all([
+      prisma.lesson.findUnique({ where: { id: req.params.id } }),
+      prisma.enrollment.findFirst({ where: { userId: req.user!.id, course: { lessons: { some: { id: req.params.id } } } } }),
+    ]);
     if (!lesson) throw new AppError('NOT_FOUND', 404);
-    const enrollment = await getEnrollmentOrThrow(req.user!.id, lesson.courseId);
+    if (!enrollment) throw new AppError('NOT_ENROLLED', 403);
     const row = await recordProgress(enrollment, lesson, input);
     res.json({ watchedSec: row.watchedSec, lastPositionSec: row.lastPositionSec, completed: row.completed });
   }),

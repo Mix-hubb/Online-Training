@@ -12,10 +12,11 @@ export function publicName(name: string | null | undefined) {
 }
 
 /** Average (1 decimal), count and 1..5 distribution of VISIBLE reviews. */
-export async function ratingSummary(courseId: string) {
+/** By course id, or by slug (so a caller can fetch it together with the course itself). */
+export async function ratingSummary(course: string | { slug: string }) {
   const groups = await prisma.courseReview.groupBy({
     by: ['rating'],
-    where: { courseId, status: 'VISIBLE' },
+    where: typeof course === 'string' ? { courseId: course, status: 'VISIBLE' } : { course: { slug: course.slug }, status: 'VISIBLE' },
     _count: { _all: true },
   });
   const distribution: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };

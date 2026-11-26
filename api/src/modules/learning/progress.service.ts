@@ -35,8 +35,12 @@ export async function completedLessonIds(enrollment: Enrollment): Promise<Set<st
 }
 
 export async function assertLessonUnlocked(enrollment: Enrollment, lesson: Lesson) {
-  const lessons = await prisma.lesson.findMany({ where: { courseId: lesson.courseId }, orderBy: { order: 'asc' }, select: { id: true } });
-  const states = lessonStates(lessons.map((l) => l.id), await completedLessonIds(enrollment));
+  // Independent reads in parallel: each DB round trip costs the network latency to the DB.
+  const [lessons, done] = await Promise.all([
+    prisma.lesson.findMany({ where: { courseId: lesson.courseId }, orderBy: { order: 'asc' }, select: { id: true } }),
+    completedLessonIds(enrollment),
+  ]);
+  const states = lessonStates(lessons.map((l) => l.id), done);
   const st = states.find((s) => s.lessonId === lesson.id);
   if (!st?.unlocked) throw new AppError('LOCKED', 403, 'Finish the previous lesson first');
 }
@@ -47,20 +51,22 @@ export async function recordProgress(
   input: { position: number; watchedDelta: number },
   now = new Date(),
 ): Promise<LessonProgress> {
-  await assertLessonUnlocked(enrollment, lesson);
   const key = { enrollmentId_lessonId_cycle: { enrollmentId: enrollment.id, lessonId: lesson.id, cycle: enrollment.cycle } };
-  const existing = await prisma.lessonProgress.findUnique({ where: key });
+  // The lock check and the current row are independent reads: fetch them together (a locked lesson still throws).
+  const [, existing] = await Promise.all([assertLessonUnlocked(enrollment, lesson), prisma.lessonProgress.findUnique({ where: key })]);
   const counted = capDelta(input.watchedDelta, existing?.updatedAt ?? null, now);
   const duration = lesson.durationSec;
   const watchedSec = Math.min(duration > 0 ? duration : Number.MAX_SAFE_INTEGER, (existing?.watchedSec ?? 0) + counted);
   const position = Math.max(0, Math.min(Math.floor(input.position), duration > 0 ? duration : Math.floor(input.position)));
   const completed = Boolean(existing?.completed) || isComplete(watchedSec, duration);
 
-  const row = await prisma.lessonProgress.upsert({
-    where: key,
-    create: { enrollmentId: enrollment.id, lessonId: lesson.id, cycle: enrollment.cycle, watchedSec, lastPositionSec: position, completed },
-    update: { watchedSec, lastPositionSec: position, completed, updatedAt: now },
-  });
-  await prisma.enrollment.update({ where: { id: enrollment.id }, data: { lastLessonId: lesson.id } });
+  const [row] = await Promise.all([
+    prisma.lessonProgress.upsert({
+      where: key,
+      create: { enrollmentId: enrollment.id, lessonId: lesson.id, cycle: enrollment.cycle, watchedSec, lastPositionSec: position, completed },
+      update: { watchedSec, lastPositionSec: position, completed, updatedAt: now },
+    }),
+    prisma.enrollment.update({ where: { id: enrollment.id }, data: { lastLessonId: lesson.id } }),
+  ]);
   return row;
 }

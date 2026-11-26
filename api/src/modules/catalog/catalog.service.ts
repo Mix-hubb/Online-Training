@@ -71,33 +71,35 @@ export async function listCourses(q: CourseListQuery) {
 }
 
 export async function courseDetail(slug: string, viewer?: User) {
-  const c = await prisma.course.findUnique({
-    where: { slug },
-    include: {
-      ...cardInclude,
-      lessons: { orderBy: { order: 'asc' }, select: { id: true, order: true, title: true, description: true, durationSec: true } },
-      quiz: { include: { _count: { select: { questions: true } } } },
-    },
-  });
+  // Everything is keyed by the slug, so it is fetched in one round of parallel queries (each DB round trip
+  // costs the network latency to the DB). Nothing is returned before the visibility checks below.
+  const [c, enrollment, rating, pending] = await Promise.all([
+    prisma.course.findUnique({
+      where: { slug },
+      include: {
+        ...cardInclude,
+        lessons: { orderBy: { order: 'asc' }, select: { id: true, order: true, title: true, description: true, durationSec: true } },
+        quiz: { include: { _count: { select: { questions: true } } } },
+      },
+    }),
+    viewer ? prisma.enrollment.findFirst({ where: { userId: viewer.id, course: { slug } } }) : null,
+    ratingSummary({ slug }),
+    viewer
+      ? prisma.order.findFirst({
+          where: { userId: viewer.id, course: { slug }, status: { in: ['PENDING', 'AWAITING_SLIP'] } },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, status: true, provider: true, method: true },
+        })
+      : null,
+  ]);
   if (!c) throw new AppError('NOT_FOUND', 404);
 
   const isStaff = viewer?.role === 'ADMIN';
-  const enrollment = viewer
-    ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: viewer.id, courseId: c.id } } })
-    : null;
 
   // DRAFT: admins only. ARCHIVED: owners (and admins) only.
   if (c.status === 'DRAFT' && !isStaff) throw new AppError('NOT_FOUND', 404);
   if (c.status === 'ARCHIVED' && !isStaff && !enrollment) throw new AppError('COURSE_UNAVAILABLE', 410);
 
-  const rating = await ratingSummary(c.id);
-  const pending = viewer
-    ? await prisma.order.findFirst({
-        where: { userId: viewer.id, courseId: c.id, status: { in: ['PENDING', 'AWAITING_SLIP'] } },
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, provider: true, method: true },
-      })
-    : null;
 
   return {
     ...courseCard({ ...c, lessons: c.lessons }),
