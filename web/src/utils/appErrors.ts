@@ -19,6 +19,18 @@ function show(err: unknown) {
   appError.value = { text, at: Date.now() };
 }
 
+/**
+ * A rejection the user should hear about: our own API errors, or an Error thrown by this app's code.
+ * Third-party scripts on the page (Google sign-in, browser extensions) reject promises of their own;
+ * those are only logged, since the user can do nothing about them and the page still works.
+ */
+function isOurs(reason: unknown): boolean {
+  if (reason instanceof ApiError) return true;
+  if (!(reason instanceof Error)) return false;
+  const top = (reason.stack ?? '').split('\n').find((l) => /https?:\/\//.test(l)) ?? '';
+  return top.includes(window.location.origin);
+}
+
 const CHUNK_FAILED = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
 const RELOAD_KEY = 'ot-chunk-reload';
 
@@ -29,7 +41,7 @@ export function installErrorHandlers(app: App, router: Router) {
   };
   window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
-    show(e.reason);
+    if (isOurs(e.reason)) show(e.reason);
   });
   router.onError((err, to) => {
     if (err instanceof Error && CHUNK_FAILED.test(err.message)) {
