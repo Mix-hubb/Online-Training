@@ -88,7 +88,7 @@ export async function courseDetail(slug: string, viewer?: User) {
       ? prisma.order.findFirst({
           where: { userId: viewer.id, course: { slug }, status: { in: ['PENDING', 'AWAITING_SLIP'] } },
           orderBy: { createdAt: 'desc' },
-          select: { id: true, status: true, provider: true, method: true },
+          select: { id: true, status: true, provider: true, method: true, _count: { select: { slips: { where: { status: 'PENDING' } } } } },
         })
       : null,
   ]);
@@ -122,7 +122,9 @@ export async function courseDetail(slug: string, viewer?: User) {
           enrolled: Boolean(enrollment),
           enrollmentStatus: enrollment?.status ?? null,
           lastLessonId: enrollment?.lastLessonId ?? null,
-          pendingOrder: pending,
+          pendingOrder: pending
+            ? { id: pending.id, status: pending.status, provider: pending.provider, method: pending.method, underReview: pending._count.slips > 0 }
+            : null,
         }
       : null,
   };

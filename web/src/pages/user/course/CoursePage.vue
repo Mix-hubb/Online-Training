@@ -86,6 +86,21 @@ async function buy() {
   }
 }
 
+/** Drop the unpaid bank transfer and show the payment methods again. */
+async function cancelTransfer() {
+  if (!pending.value) return;
+  busy.value = true;
+  err.value = '';
+  try {
+    await payments.cancelBankTransfer(pending.value.id);
+    await load();
+  } catch (e) {
+    err.value = errorMessage(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function refreshRating() {
   const c = await catalog.getCourse(course.value!.slug);
   course.value!.rating = c.rating;
@@ -197,8 +212,15 @@ async function playIntro() {
           <span class="text-body-2 text-center" style="color: var(--ot-success)">{{ course.viewer?.enrollmentStatus === 'COMPLETED' ? 'You completed this course.' : 'You own this course.' }}</span>
         </template>
         <template v-else-if="pending && pending.status === 'AWAITING_SLIP'">
-          <div class="callout">Your bank transfer is waiting for a slip or for review.</div>
-          <v-btn color="primary" block size="large" :to="`/checkout/bank-transfer/${pending.id}`">View bank transfer</v-btn>
+          <template v-if="pending.underReview">
+            <div class="callout">We are checking your transfer slip. The course opens as soon as it is approved.</div>
+            <v-btn color="primary" block size="large" :to="`/checkout/bank-transfer/${pending.id}`">View bank transfer</v-btn>
+          </template>
+          <template v-else>
+            <div class="callout">You chose bank transfer. Transfer the amount and upload your slip, or pick another way to pay.</div>
+            <v-btn color="primary" block size="large" :to="`/checkout/bank-transfer/${pending.id}`">Continue bank transfer</v-btn>
+            <v-btn variant="text" block :loading="busy" @click="cancelTransfer">Choose another payment method</v-btn>
+          </template>
         </template>
         <template v-else-if="course.isFree">
           <v-btn color="primary" block size="large" :loading="busy" :disabled="preview" @click="enrolFree">{{ auth.user ? 'Start for free' : 'Log in to start' }}</v-btn>

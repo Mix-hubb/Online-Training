@@ -1,6 +1,6 @@
 // Checkout + orders (requireAuth).
 //   POST /courses/:id/checkout  { method: card|promptpay|btc, currency: usd|thb } -> { url }
-//   GET  /orders                   (my orders + receiptUrl)
+//   GET  /orders                   (my orders + receiptUrl: paid, or a bank transfer with a slip sent; not checkouts left unfinished)
 //   GET  /orders/by-session/:sessionId  (polled after the Stripe redirect until PAID)
 //   GET  /orders/:id
 import { Router } from 'express';
@@ -28,8 +28,10 @@ checkoutRouter.get(
   '/orders',
   ...auth,
   h(async (req, res) => {
+    // Only real transactions (2026-11-26): opening a checkout and leaving it (Stripe page closed, bank transfer
+    // chosen but no slip sent) is not an order the learner made.
     const rows = await prisma.order.findMany({
-      where: { userId: req.user!.id },
+      where: { userId: req.user!.id, OR: [{ status: 'PAID' }, { slips: { some: {} } }] },
       orderBy: { createdAt: 'desc' },
       include: { course: { select: { title: true, slug: true, thumbnailUrl: true } } },
     });

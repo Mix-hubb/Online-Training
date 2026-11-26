@@ -69,7 +69,7 @@ export interface CourseDetail extends CourseCard {
     enrolled: boolean;
     enrollmentStatus: 'IN_PROGRESS' | 'COMPLETED' | null;
     lastLessonId: string | null;
-    pendingOrder: { id: string; status: string; provider: string; method: string | null } | null;
+    pendingOrder: { id: string; status: string; provider: string; method: string | null; underReview: boolean } | null;
   } | null;
 }
 

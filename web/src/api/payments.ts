@@ -8,3 +8,5 @@ export const bankDetails = () => get<BankDetails>('/payments/bank-details');
 export const startBankTransfer = (courseId: string) => post<{ order: Order; bank: BankDetails }>(`/courses/${courseId}/checkout/bank-transfer`);
 export const uploadSlip = (orderId: string, file: FileUpload) => post<{ id: string }>(`/orders/${orderId}/slip`, { file });
 export const slips = (orderId: string) => get<Slip[]>(`/orders/${orderId}/slips`);
+/** Cancel a bank transfer that has no slip under review, so another payment method can be chosen. */
+export const cancelBankTransfer = (orderId: string) => post<{ ok: true }>(`/orders/${orderId}/cancel`);

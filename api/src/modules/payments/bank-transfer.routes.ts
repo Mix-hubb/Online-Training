@@ -3,6 +3,7 @@
 //   POST /courses/:id/checkout/bank-transfer    -> Order AWAITING_SLIP (THB), reused if one is open
 //   POST /orders/:id/slip  { file }             (one image <= 5 MB, private storage)
 //   GET  /orders/:id/slips                      (own slips + short-lived links)
+//   POST /orders/:id/cancel                     (own bank transfer with no slip under review -> FAILED; pick another method)
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../db.js';
@@ -81,6 +82,22 @@ bankTransferRouter.post(
     await storage.putPrivate(key, img.buffer, img.mime);
     const slip = await prisma.paymentSlip.create({ data: { orderId: order.id, storageKey: key, mime: img.mime, sizeBytes: img.buffer.length } });
     res.status(201).json({ id: slip.id, status: slip.status, createdAt: slip.createdAt });
+  }),
+);
+
+bankTransferRouter.post(
+  '/orders/:id/cancel',
+  ...auth,
+  h(async (req, res) => {
+    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    if (!order || order.userId !== req.user!.id) throw new AppError('NOT_FOUND', 404);
+    // Only while nothing is being checked: once a slip waits for review the admin decides.
+    const done = await prisma.order.updateMany({
+      where: { id: order.id, provider: 'BANK_TRANSFER', status: 'AWAITING_SLIP', slips: { none: { status: 'PENDING' } } },
+      data: { status: 'FAILED' },
+    });
+    if (!done.count) throw new AppError('VALIDATION_FAILED', 409, 'This order can no longer be cancelled');
+    res.json({ ok: true });
   }),
 );
 

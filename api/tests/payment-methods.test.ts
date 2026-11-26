@@ -38,6 +38,35 @@ describe('payment methods', () => {
     expect(await prisma.order.count({ where: { courseId: old.id } })).toBe(0);
   });
 
+  it('orders list: only paid orders or transfers with a slip; unpaid transfer can be cancelled', async () => {
+    const u = await makeUser();
+    const other = await makeUser();
+    const c = await makeCourse({ isFree: false, priceMinor: 1000, priceThbMinor: 35000 });
+    await prisma.order.create({ data: { userId: u.id, courseId: c.id, amountMinor: 1000, currency: 'usd', provider: 'STRIPE', method: 'card' } });
+
+    const co = await as(u.id).post(`/courses/${c.id}/checkout/bank-transfer`);
+    const orderId = co.body.order.id;
+    expect((await as(u.id).get('/orders')).body).toHaveLength(0);
+    const detail = await as(u.id).get(`/courses/${c.slug}`);
+    expect(detail.body.viewer.pendingOrder).toMatchObject({ id: orderId, underReview: false });
+
+    // Not someone else's; then cancel frees the course page for another method.
+    expect((await as(other.id).post(`/orders/${orderId}/cancel`)).status).toBe(404);
+    expect((await as(u.id).post(`/orders/${orderId}/cancel`)).status).toBe(200);
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: orderId } })).status).toBe('FAILED');
+    // Only the unfinished Stripe checkout is left, which does not lock the purchase card.
+    expect((await as(u.id).get(`/courses/${c.slug}`)).body.viewer.pendingOrder.status).toBe('PENDING');
+    expect((await as(u.id).post(`/orders/${orderId}/cancel`)).status).toBe(409);
+
+    // With a slip under review: listed, and no longer cancellable.
+    const again = (await as(u.id).post(`/courses/${c.id}/checkout/bank-transfer`)).body.order.id;
+    expect(again).not.toBe(orderId);
+    await as(u.id).post(`/orders/${again}/slip`).send({ file: { dataBase64: pngBase64(500) } });
+    expect((await as(u.id).get('/orders')).body.map((o: { id: string }) => o.id)).toEqual([again]);
+    expect((await as(u.id).get(`/courses/${c.slug}`)).body.viewer.pendingOrder.underReview).toBe(true);
+    expect((await as(u.id).post(`/orders/${again}/cancel`)).status).toBe(409);
+  });
+
   it('dev checkout pays with the THB price', async () => {
     const u = await makeUser();
     const c = await makeCourse({ isFree: false, priceMinor: 1000, priceThbMinor: 35000 });

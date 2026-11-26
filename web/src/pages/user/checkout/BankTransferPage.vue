@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Bank transfer (spec 15.1): show account details, upload a slip (jpg/png/webp, 5 MB), see review status.
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import EmptyState from '@/components/common/EmptyState.vue';
 import StatusPill from '@/components/common/StatusPill.vue';
 import * as ordersApi from '@/api/orders';
@@ -12,6 +12,9 @@ import { dateTime, money } from '@/utils/format';
 import CourseCover from '@/components/course/CourseCover.vue';
 
 const route = useRoute();
+const router = useRouter();
+const askCancel = ref(false);
+const cancelling = ref(false);
 const id = String(route.params.orderId);
 const order = ref<Order | null>(null);
 const bank = ref<BankDetails | null>(null);
@@ -52,6 +55,21 @@ async function upload() {
     err.value = errorMessage(e);
   } finally {
     busy.value = false;
+  }
+}
+/** No slip under review yet: drop this transfer and go back to the course to pick another way to pay. */
+async function cancelTransfer() {
+  cancelling.value = true;
+  err.value = '';
+  try {
+    await payments.cancelBankTransfer(id);
+    askCancel.value = false;
+    await router.push(order.value?.course?.slug ? `/courses/${order.value.course.slug}` : '/profile/orders');
+  } catch (e) {
+    askCancel.value = false;
+    err.value = errorMessage(e);
+  } finally {
+    cancelling.value = false;
   }
 }
 async function copy(text: string) {
@@ -117,7 +135,10 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
               <span class="text-caption text-muted">JPG, PNG or WebP, up to 5 MB</span>
               <span class="choose">Choose file</span>
             </label>
-            <div><v-btn color="primary" min-height="48" :loading="busy" :disabled="!file" @click="upload">Submit slip</v-btn></div>
+            <div class="d-flex flex-wrap ga-2 align-center">
+              <v-btn color="primary" min-height="48" :loading="busy" :disabled="!file" @click="upload">Submit slip</v-btn>
+              <v-btn variant="text" min-height="48" @click="askCancel = true">Cancel and choose another method</v-btn>
+            </div>
           </section>
 
           <section v-if="slips.length" class="d-flex flex-column ga-3">
@@ -144,6 +165,17 @@ const tone = (s: Slip['status']) => (s === 'APPROVED' ? 'success' : s === 'REJEC
         </aside>
       </div>
       <v-snackbar v-model="copied" :timeout="2000">Copied</v-snackbar>
+      <v-dialog v-model="askCancel" max-width="420">
+        <v-card class="pa-2">
+          <v-card-title class="text-h6">Cancel this bank transfer?</v-card-title>
+          <v-card-text class="text-body-2">Only cancel if you have not transferred any money. You can then pay by card, PromptPay or a new bank transfer.</v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="askCancel = false">Keep it</v-btn>
+            <v-btn color="primary" variant="flat" :loading="cancelling" @click="cancelTransfer">Cancel transfer</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
   </div>
 </template>
