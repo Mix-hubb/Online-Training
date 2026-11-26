@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <!-- Lesson diagram: hashboard voltage domains in series, the chip data chain, and the main support parts. -->
+  <defs>
+    <marker id="dt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#1F6FB8"/></marker>
+  </defs>
+  <rect width="1600" height="900" fill="#F5F8FC"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="80" y="90" font-size="44" font-weight="700" fill="#14304F">Hashboard: voltage domains</text>
+    <text x="80" y="134" font-size="24" fill="#4A5B6E">Chips share a domain; domains are stacked in series, so each gets a small slice of the board voltage.</text>
+
+    <!-- board -->
+    <rect x="80" y="190" width="1440" height="420" rx="20" fill="#2F6F5E"/>
+    <!-- supply rails -->
+    <rect x="110" y="215" width="1380" height="14" rx="4" fill="#C98A4B"/>
+    <text x="120" y="258" font-size="20" fill="#E9F3EF">+ supply from PSU</text>
+    <rect x="110" y="572" width="1380" height="14" rx="4" fill="#8E99A6"/>
+    <text x="120" y="560" font-size="20" fill="#E9F3EF">ground</text>
+
+    <!-- domains: 6 shown, staircase in series -->
+    <g>
+      <g transform="translate(150 300)">
+        <rect width="180" height="200" rx="12" fill="#3C8571" stroke="#8FD1BC" stroke-width="2" stroke-dasharray="8 6"/>
+        <rect x="25" y="40" width="56" height="56" rx="6" fill="#1E242E"/><rect x="99" y="40" width="56" height="56" rx="6" fill="#1E242E"/>
+        <text x="90" y="140" text-anchor="middle" font-size="20" font-weight="600" fill="#FFFFFF">Domain 1</text>
+        <text x="90" y="168" text-anchor="middle" font-size="16" fill="#D6EEE6">2 chips</text>
+      </g>
+      <g transform="translate(370 300)">
+        <rect width="180" height="200" rx="12" fill="#3C8571" stroke="#8FD1BC" stroke-width="2" stroke-dasharray="8 6"/>
+        <rect x="25" y="40" width="56" height="56" rx="6" fill="#1E242E"/><rect x="99" y="40" width="56" height="56" rx="6" fill="#1E242E"/>
+        <text x="90" y="140" text-anchor="middle" font-size="20" font-weight="600" fill="#FFFFFF">Domain 2</text>
+        <text x="90" y="168" text-anchor="middle" font-size="16" fill="#D6EEE6">2 chips</text>
+      </g>
+      <g transform="translate(590 300)">
+        <rect width="180" height="200" rx="12" fill="#3C8571" stroke="#8FD1BC" stroke-width="2" stroke-dasharray="8 6"/>
+        <rect x="25" y="40" width="56" height="56" rx="6" fill="#1E242E"/><rect x="99" y="40" width="56" height="56" rx="6" fill="#1E242E"/>
+        <text x="90" y="140" text-anchor="middle" font-size="20" font-weight="600" fill="#FFFFFF">Domain 3</text>
+        <text x="90" y="168" text-anchor="middle" font-size="16" fill="#D6EEE6">2 chips</text>
+      </g>
+      <text x="855" y="410" text-anchor="middle" font-size="44" font-weight="700" fill="#D6EEE6">· · ·</text>
+      <g transform="translate(940 300)">
+        <rect width="180" height="200" rx="12" fill="#3C8571" stroke="#8FD1BC" stroke-width="2" stroke-dasharray="8 6"/>
+        <rect x="25" y="40" width="56" height="56" rx="6" fill="#1E242E"/><rect x="99" y="40" width="56" height="56" rx="6" fill="#1E242E"/>
+        <text x="90" y="140" text-anchor="middle" font-size="20" font-weight="600" fill="#FFFFFF">Domain 37</text>
+        <text x="90" y="168" text-anchor="middle" font-size="16" fill="#D6EEE6">2 chips</text>
+      </g>
+      <g transform="translate(1160 300)">
+        <rect width="180" height="200" rx="12" fill="#3C8571" stroke="#8FD1BC" stroke-width="2" stroke-dasharray="8 6"/>
+        <rect x="25" y="40" width="56" height="56" rx="6" fill="#1E242E"/><rect x="99" y="40" width="56" height="56" rx="6" fill="#1E242E"/>
+        <text x="90" y="140" text-anchor="middle" font-size="20" font-weight="600" fill="#FFFFFF">Domain 38</text>
+        <text x="90" y="168" text-anchor="middle" font-size="16" fill="#D6EEE6">2 chips</text>
+      </g>
+      <!-- data chain through chips -->
+      <g stroke="#9CC8F0" stroke-width="4" fill="none" marker-end="url(#dt)">
+        <path d="M1398 368 H1344"/>
+        <path d="M1158 368 H1124"/>
+        <path d="M938 368 H904"/>
+        <path d="M806 368 H774"/>
+        <path d="M588 368 H554"/>
+        <path d="M368 368 H334"/>
+      </g>
+      <rect x="1400" y="330" width="90" height="76" rx="8" fill="#F2F4F7"/>
+      <text x="1445" y="375" text-anchor="middle" font-size="18" font-weight="700" fill="#14304F">Data</text>
+      <text x="1445" y="430" text-anchor="middle" font-size="16" fill="#D6EEE6">from control</text>
+      <text x="1445" y="450" text-anchor="middle" font-size="16" fill="#D6EEE6">board</text>
+    </g>
+
+    <!-- callouts -->
+    <g font-size="21" fill="#14304F">
+      <g transform="translate(80 660)">
+        <rect width="340" height="190" rx="14" fill="#FFFFFF" stroke="#D3DEEA" stroke-width="2"/>
+        <text x="24" y="44" font-weight="700">Example: 76-chip board</text>
+        <text x="24" y="84" fill="#4A5B6E">38 domains × 2 chips</text>
+        <text x="24" y="118" fill="#4A5B6E">114-chip board:</text>
+        <text x="24" y="148" fill="#4A5B6E">38 domains × 3 chips</text>
+      </g>
+      <g transform="translate(450 660)">
+        <rect width="340" height="190" rx="14" fill="#FFFFFF" stroke="#D3DEEA" stroke-width="2"/>
+        <text x="24" y="44" font-weight="700">Power parts</text>
+        <text x="24" y="84" fill="#4A5B6E">MOSFET switch on the input</text>
+        <text x="24" y="118" fill="#4A5B6E">Boost circuit + LDOs for</text>
+        <text x="24" y="148" fill="#4A5B6E">the small support rails</text>
+      </g>
+      <g transform="translate(820 660)">
+        <rect width="340" height="190" rx="14" fill="#FFFFFF" stroke="#D3DEEA" stroke-width="2"/>
+        <text x="24" y="44" font-weight="700">Support parts</text>
+        <text x="24" y="84" fill="#4A5B6E">EEPROM (calibration data)</text>
+        <text x="24" y="118" fill="#4A5B6E">PIC, oscillator, temp sensors</text>
+        <text x="24" y="148" fill="#4A5B6E">Decoupling capacitors</text>
+      </g>
+      <g transform="translate(1190 660)">
+        <rect width="330" height="190" rx="14" fill="#FFFFFF" stroke="#D3DEEA" stroke-width="2"/>
+        <text x="24" y="44" font-weight="700">Why it matters</text>
+        <text x="24" y="84" fill="#4A5B6E">One shorted domain shifts</text>
+        <text x="24" y="118" fill="#4A5B6E">the voltage of all others;</text>
+        <text x="24" y="148" fill="#4A5B6E">one dead chip breaks the chain</text>
+      </g>
+    </g>
+  </g>
+</svg>

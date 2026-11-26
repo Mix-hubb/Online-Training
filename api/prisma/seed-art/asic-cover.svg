@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <!-- Mockup course cover: a hashboard seen from above, chips in rows under heatsinks. Original drawing. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EAF2FB"/>
+      <stop offset="1" stop-color="#C9DCF0"/>
+    </linearGradient>
+    <linearGradient id="pcb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2F6F5E"/>
+      <stop offset="1" stop-color="#245849"/>
+    </linearGradient>
+    <linearGradient id="sink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E4E9EF"/>
+      <stop offset="1" stop-color="#AEB8C4"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3A4250"/>
+      <stop offset="1" stop-color="#1E242E"/>
+    </linearGradient>
+    <pattern id="fins" width="12" height="60" patternUnits="userSpaceOnUse">
+      <rect width="12" height="60" fill="url(#sink)"/>
+      <rect x="9" width="3" height="60" fill="#98A3B0"/>
+    </pattern>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1B3A5C" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1380" cy="140" r="260" fill="#B7D0EA" opacity="0.55"/>
+  <circle cx="180" cy="820" r="220" fill="#B7D0EA" opacity="0.45"/>
+
+  <g transform="translate(800 470) rotate(-8) translate(-620 -250)" filter="url(#shadow)">
+    <!-- board -->
+    <rect width="1240" height="500" rx="18" fill="url(#pcb)"/>
+    <rect x="10" y="10" width="1220" height="480" rx="12" fill="none" stroke="#4E9B84" stroke-width="2" opacity="0.6"/>
+    <!-- copper bus bars -->
+    <rect x="40" y="36" width="1160" height="16" rx="4" fill="#C98A4B"/>
+    <rect x="40" y="448" width="1160" height="16" rx="4" fill="#C98A4B"/>
+    <!-- chip rows: 4 rows x 12 -->
+    <g fill="url(#chip)">
+      <g transform="translate(80 84)">
+        <rect x="0" y="0" width="70" height="70" rx="6"/><rect x="88" y="0" width="70" height="70" rx="6"/><rect x="176" y="0" width="70" height="70" rx="6"/><rect x="264" y="0" width="70" height="70" rx="6"/><rect x="352" y="0" width="70" height="70" rx="6"/><rect x="440" y="0" width="70" height="70" rx="6"/><rect x="528" y="0" width="70" height="70" rx="6"/><rect x="616" y="0" width="70" height="70" rx="6"/><rect x="704" y="0" width="70" height="70" rx="6"/><rect x="792" y="0" width="70" height="70" rx="6"/><rect x="880" y="0" width="70" height="70" rx="6"/><rect x="968" y="0" width="70" height="70" rx="6"/>
+      </g>
+      <g transform="translate(80 172)">
+        <rect x="0" y="0" width="70" height="70" rx="6"/><rect x="88" y="0" width="70" height="70" rx="6"/><rect x="176" y="0" width="70" height="70" rx="6"/><rect x="264" y="0" width="70" height="70" rx="6"/><rect x="352" y="0" width="70" height="70" rx="6"/><rect x="440" y="0" width="70" height="70" rx="6"/><rect x="528" y="0" width="70" height="70" rx="6"/><rect x="616" y="0" width="70" height="70" rx="6"/><rect x="704" y="0" width="70" height="70" rx="6"/><rect x="792" y="0" width="70" height="70" rx="6"/><rect x="880" y="0" width="70" height="70" rx="6"/><rect x="968" y="0" width="70" height="70" rx="6"/>
+      </g>
+      <g transform="translate(80 260)">
+        <rect x="0" y="0" width="70" height="70" rx="6"/><rect x="88" y="0" width="70" height="70" rx="6"/><rect x="176" y="0" width="70" height="70" rx="6"/><rect x="264" y="0" width="70" height="70" rx="6"/><rect x="352" y="0" width="70" height="70" rx="6"/><rect x="440" y="0" width="70" height="70" rx="6"/><rect x="528" y="0" width="70" height="70" rx="6"/><rect x="616" y="0" width="70" height="70" rx="6"/><rect x="704" y="0" width="70" height="70" rx="6"/><rect x="792" y="0" width="70" height="70" rx="6"/><rect x="880" y="0" width="70" height="70" rx="6"/><rect x="968" y="0" width="70" height="70" rx="6"/>
+      </g>
+      <g transform="translate(80 348)">
+        <rect x="0" y="0" width="70" height="70" rx="6"/><rect x="88" y="0" width="70" height="70" rx="6"/><rect x="176" y="0" width="70" height="70" rx="6"/><rect x="264" y="0" width="70" height="70" rx="6"/><rect x="352" y="0" width="70" height="70" rx="6"/><rect x="440" y="0" width="70" height="70" rx="6"/><rect x="528" y="0" width="70" height="70" rx="6"/><rect x="616" y="0" width="70" height="70" rx="6"/><rect x="704" y="0" width="70" height="70" rx="6"/><rect x="792" y="0" width="70" height="70" rx="6"/><rect x="880" y="0" width="70" height="70" rx="6"/><rect x="968" y="0" width="70" height="70" rx="6"/>
+      </g>
+    </g>
+    <!-- heatsinks over the middle two rows -->
+    <rect x="74" y="166" width="1050" height="170" rx="8" fill="url(#fins)" opacity="0.96"/>
+    <rect x="74" y="166" width="1050" height="170" rx="8" fill="none" stroke="#8D98A6" stroke-width="2"/>
+    <!-- chip marks on visible rows -->
+    <g fill="#6B7686">
+      <circle cx="92" cy="96" r="4"/><circle cx="180" cy="96" r="4"/><circle cx="268" cy="96" r="4"/><circle cx="356" cy="96" r="4"/><circle cx="444" cy="96" r="4"/><circle cx="532" cy="96" r="4"/><circle cx="620" cy="96" r="4"/><circle cx="708" cy="96" r="4"/><circle cx="796" cy="96" r="4"/><circle cx="884" cy="96" r="4"/><circle cx="972" cy="96" r="4"/><circle cx="1060" cy="96" r="4"/>
+      <circle cx="92" cy="360" r="4"/><circle cx="180" cy="360" r="4"/><circle cx="268" cy="360" r="4"/><circle cx="356" cy="360" r="4"/><circle cx="444" cy="360" r="4"/><circle cx="532" cy="360" r="4"/><circle cx="620" cy="360" r="4"/><circle cx="708" cy="360" r="4"/><circle cx="796" cy="360" r="4"/><circle cx="884" cy="360" r="4"/><circle cx="972" cy="360" r="4"/><circle cx="1060" cy="360" r="4"/>
+    </g>
+    <!-- small parts: capacitors and regulators between rows -->
+    <g fill="#D8C27A">
+      <rect x="128" y="158" width="10" height="6" rx="1"/><rect x="304" y="158" width="10" height="6" rx="1"/><rect x="480" y="158" width="10" height="6" rx="1"/><rect x="656" y="158" width="10" height="6" rx="1"/><rect x="832" y="158" width="10" height="6" rx="1"/><rect x="1008" y="158" width="10" height="6" rx="1"/>
+      <rect x="128" y="338" width="10" height="6" rx="1"/><rect x="304" y="338" width="10" height="6" rx="1"/><rect x="480" y="338" width="10" height="6" rx="1"/><rect x="656" y="338" width="10" height="6" rx="1"/><rect x="832" y="338" width="10" height="6" rx="1"/><rect x="1008" y="338" width="10" height="6" rx="1"/>
+    </g>
+    <!-- right side: power input and data connector -->
+    <rect x="1140" y="90" width="72" height="120" rx="8" fill="#20262F"/>
+    <rect x="1152" y="104" width="48" height="22" rx="3" fill="#C98A4B"/>
+    <rect x="1152" y="138" width="48" height="22" rx="3" fill="#C98A4B"/>
+    <rect x="1152" y="172" width="48" height="22" rx="3" fill="#C98A4B"/>
+    <rect x="1146" y="300" width="60" height="96" rx="6" fill="#F2F4F7"/>
+    <g fill="#20262F"><rect x="1158" y="312" width="12" height="10"/><rect x="1182" y="312" width="12" height="10"/><rect x="1158" y="334" width="12" height="10"/><rect x="1182" y="334" width="12" height="10"/><rect x="1158" y="356" width="12" height="10"/><rect x="1182" y="356" width="12" height="10"/><rect x="1158" y="378" width="12" height="10"/><rect x="1182" y="378" width="12" height="10"/></g>
+    <!-- status LED -->
+    <circle cx="1176" cy="244" r="9" fill="#5BD08A"/>
+    <circle cx="1176" cy="244" r="18" fill="#5BD08A" opacity="0.25"/>
+  </g>
+</svg>

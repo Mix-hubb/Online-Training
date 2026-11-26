@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <!-- Lesson diagram: the four main parts of an ASIC miner and how power and data flow between them. -->
+  <defs>
+    <marker id="pw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#C98A4B"/></marker>
+    <marker id="dt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#1F6FB8"/></marker>
+  </defs>
+  <rect width="1600" height="900" fill="#F5F8FC"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="80" y="90" font-size="44" font-weight="700" fill="#14304F">Inside an ASIC miner</text>
+    <text x="80" y="134" font-size="24" fill="#4A5B6E">Four main parts: power flows in orange, data flows in blue.</text>
+
+    <!-- PSU -->
+    <rect x="80" y="230" width="300" height="190" rx="16" fill="#FFFFFF" stroke="#C98A4B" stroke-width="3"/>
+    <text x="230" y="290" text-anchor="middle" font-size="30" font-weight="700" fill="#14304F">PSU</text>
+    <text x="230" y="330" text-anchor="middle" font-size="20" fill="#4A5B6E">AC in → DC out</text>
+    <text x="230" y="360" text-anchor="middle" font-size="20" fill="#4A5B6E">feeds the hashboards</text>
+    <text x="230" y="390" text-anchor="middle" font-size="20" fill="#4A5B6E">and the control board</text>
+
+    <!-- Hashboards -->
+    <g>
+      <rect x="600" y="190" width="520" height="90" rx="12" fill="#2F6F5E"/>
+      <rect x="600" y="300" width="520" height="90" rx="12" fill="#2F6F5E"/>
+      <rect x="600" y="410" width="520" height="90" rx="12" fill="#2F6F5E"/>
+      <g fill="#1E242E">
+        <rect x="630" y="215" width="40" height="40" rx="4"/><rect x="690" y="215" width="40" height="40" rx="4"/><rect x="750" y="215" width="40" height="40" rx="4"/><rect x="810" y="215" width="40" height="40" rx="4"/><rect x="870" y="215" width="40" height="40" rx="4"/><rect x="930" y="215" width="40" height="40" rx="4"/><rect x="990" y="215" width="40" height="40" rx="4"/><rect x="1050" y="215" width="40" height="40" rx="4"/>
+        <rect x="630" y="325" width="40" height="40" rx="4"/><rect x="690" y="325" width="40" height="40" rx="4"/><rect x="750" y="325" width="40" height="40" rx="4"/><rect x="810" y="325" width="40" height="40" rx="4"/><rect x="870" y="325" width="40" height="40" rx="4"/><rect x="930" y="325" width="40" height="40" rx="4"/><rect x="990" y="325" width="40" height="40" rx="4"/><rect x="1050" y="325" width="40" height="40" rx="4"/>
+        <rect x="630" y="435" width="40" height="40" rx="4"/><rect x="690" y="435" width="40" height="40" rx="4"/><rect x="750" y="435" width="40" height="40" rx="4"/><rect x="810" y="435" width="40" height="40" rx="4"/><rect x="870" y="435" width="40" height="40" rx="4"/><rect x="930" y="435" width="40" height="40" rx="4"/><rect x="990" y="435" width="40" height="40" rx="4"/><rect x="1050" y="435" width="40" height="40" rx="4"/>
+      </g>
+      <text x="860" y="545" text-anchor="middle" font-size="30" font-weight="700" fill="#14304F">Hashboards (usually 3)</text>
+      <text x="860" y="580" text-anchor="middle" font-size="20" fill="#4A5B6E">ASIC chips run SHA-256 and make most of the heat</text>
+    </g>
+
+    <!-- Control board -->
+    <rect x="600" y="660" width="520" height="160" rx="16" fill="#FFFFFF" stroke="#1F6FB8" stroke-width="3"/>
+    <text x="860" y="715" text-anchor="middle" font-size="30" font-weight="700" fill="#14304F">Control board</text>
+    <text x="860" y="752" text-anchor="middle" font-size="20" fill="#4A5B6E">SoC / FPGA runs the firmware, sends work,</text>
+    <text x="860" y="782" text-anchor="middle" font-size="20" fill="#4A5B6E">reads chip status and temperature</text>
+
+    <!-- Pool -->
+    <rect x="1290" y="660" width="240" height="160" rx="16" fill="#FFFFFF" stroke="#1F6FB8" stroke-width="3" stroke-dasharray="10 8"/>
+    <text x="1410" y="725" text-anchor="middle" font-size="28" font-weight="700" fill="#14304F">Mining pool</text>
+    <text x="1410" y="762" text-anchor="middle" font-size="20" fill="#4A5B6E">over Ethernet</text>
+
+    <!-- Fans -->
+    <g>
+      <circle cx="1400" cy="345" r="95" fill="#FFFFFF" stroke="#8D98A6" stroke-width="3"/>
+      <g fill="#C3CBD5">
+        <path d="M1400 345 C1408 290 1438 272 1456 285 C1444 302 1424 325 1400 345Z"/>
+        <path d="M1400 345 C1455 352 1472 382 1460 400 C1442 388 1418 370 1400 345Z"/>
+        <path d="M1400 345 C1393 400 1362 418 1344 405 C1356 388 1376 365 1400 345Z"/>
+        <path d="M1400 345 C1345 338 1328 308 1340 290 C1358 302 1382 320 1400 345Z"/>
+      </g>
+      <circle cx="1400" cy="345" r="20" fill="#8D98A6"/>
+      <text x="1400" y="485" text-anchor="middle" font-size="28" font-weight="700" fill="#14304F">Fans + heatsinks</text>
+      <text x="1400" y="520" text-anchor="middle" font-size="20" fill="#4A5B6E">pull heat out of the case</text>
+    </g>
+
+    <!-- power arrows -->
+    <g stroke="#C98A4B" stroke-width="5" fill="none" marker-end="url(#pw)">
+      <path d="M380 300 H585"/>
+      <path d="M230 420 V740 H585"/>
+    </g>
+    <!-- data arrows -->
+    <g stroke="#1F6FB8" stroke-width="5" fill="none" marker-end="url(#dt)">
+      <path d="M560 740 H540 V245 H585"/>
+      <path d="M540 345 H585"/>
+      <path d="M540 455 H585"/>
+      <path d="M1120 725 H1275"/>
+      <path d="M1290 765 H1135"/>
+    </g>
+    <!-- legend -->
+    <g font-size="20" fill="#4A5B6E">
+      <rect x="80" y="800" width="40" height="6" fill="#C98A4B"/><text x="132" y="810">Power</text>
+      <rect x="230" y="800" width="40" height="6" fill="#1F6FB8"/><text x="282" y="810">Data (work, status)</text>
+    </g>
+  </g>
+</svg>

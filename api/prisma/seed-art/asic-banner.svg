@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500">
+  <!-- Mockup banner: an air-cooled ASIC miner (front fans, open side showing hashboards). Original drawing.
+       Text on the left half, subject in the right half; nothing important near the edges so it survives cropping. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#14304F"/>
+      <stop offset="1" stop-color="#1F4C78"/>
+    </linearGradient>
+    <linearGradient id="case" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D9DFE6"/>
+      <stop offset="1" stop-color="#9FAAB7"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#B9C3CE"/>
+      <stop offset="1" stop-color="#8E99A6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.72" cy="0.5" r="0.45">
+      <stop offset="0" stop-color="#5B9BD0" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#5B9BD0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="sh" x="-10%" y="-10%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#06121F" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="500" fill="url(#bg)"/>
+  <rect width="1600" height="500" fill="url(#glow)"/>
+  <!-- faint circuit lines -->
+  <g stroke="#3D6E9C" stroke-width="2" fill="none" opacity="0.45">
+    <path d="M0 410 H260 L300 370 H520"/>
+    <path d="M0 450 H340 L370 420 H700"/>
+    <path d="M1600 60 H1420 L1390 90 H1180"/>
+  </g>
+  <g fill="#3D6E9C" opacity="0.6"><circle cx="520" cy="370" r="5"/><circle cx="700" cy="420" r="5"/><circle cx="1180" cy="90" r="5"/></g>
+
+  <!-- text -->
+  <text x="120" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="64" font-weight="700" fill="#FFFFFF">ASIC Miner Hardware</text>
+  <text x="120" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="30" fill="#C9DCF0">Hashboards, control boards and power, explained</text>
+  <rect x="120" y="292" width="230" height="58" rx="10" fill="#5B9BD0"/>
+  <text x="235" y="330" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF">Start the course</text>
+
+  <!-- miner, 3/4 view -->
+  <g transform="translate(980 95)" filter="url(#sh)">
+    <!-- side panel (top face) -->
+    <path d="M0 40 L80 0 H430 L350 40 Z" fill="#E8EDF2"/>
+    <!-- right side -->
+    <path d="M350 40 L430 0 V270 L350 310 Z" fill="url(#side)"/>
+    <!-- front -->
+    <rect x="0" y="40" width="350" height="270" rx="6" fill="url(#case)"/>
+    <!-- two fans -->
+    <g>
+      <circle cx="95" cy="175" r="78" fill="#2A313B"/>
+      <circle cx="95" cy="175" r="68" fill="#1D232B"/>
+      <g fill="#46505D">
+        <path d="M95 175 C100 130 125 115 140 125 C130 140 115 160 95 175Z"/>
+        <path d="M95 175 C140 180 155 205 145 220 C130 210 110 195 95 175Z"/>
+        <path d="M95 175 C90 220 65 235 50 225 C60 210 75 190 95 175Z"/>
+        <path d="M95 175 C50 170 35 145 45 130 C60 140 80 155 95 175Z"/>
+      </g>
+      <circle cx="95" cy="175" r="16" fill="#6B7686"/>
+      <circle cx="255" cy="175" r="78" fill="#2A313B"/>
+      <circle cx="255" cy="175" r="68" fill="#1D232B"/>
+      <g fill="#46505D">
+        <path d="M255 175 C260 130 285 115 300 125 C290 140 275 160 255 175Z"/>
+        <path d="M255 175 C300 180 315 205 305 220 C290 210 270 195 255 175Z"/>
+        <path d="M255 175 C250 220 225 235 210 225 C220 210 235 190 255 175Z"/>
+        <path d="M255 175 C210 170 195 145 205 130 C220 140 240 155 255 175Z"/>
+      </g>
+      <circle cx="255" cy="175" r="16" fill="#6B7686"/>
+    </g>
+    <!-- hashboard edges visible on the side -->
+    <g fill="#2F6F5E">
+      <path d="M362 80 L418 52 V70 L362 98 Z"/>
+      <path d="M362 150 L418 122 V140 L362 168 Z"/>
+      <path d="M362 220 L418 192 V210 L362 238 Z"/>
+    </g>
+    <!-- control panel LEDs and port -->
+    <rect x="18" y="270" width="60" height="22" rx="3" fill="#2A313B"/>
+    <circle cx="300" cy="281" r="6" fill="#5BD08A"/>
+    <circle cx="322" cy="281" r="6" fill="#E25C5C"/>
+  </g>
+</svg>
