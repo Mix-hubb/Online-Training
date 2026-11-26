@@ -11,6 +11,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 
 import { errorHandler, notFound } from './middleware/error-handler.js';
+import { sameOrigin, throttle } from './middleware/guards.js';
 import { stripeWebhookRouter } from './modules/payments/webhook.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
@@ -43,6 +44,8 @@ export function createApp() {
   app.use(compression());
   app.use(cors({ origin: config.WEB_URL, credentials: true }));
   app.use(cookieParser());
+  app.use(sameOrigin); // CSRF: state-changing requests must come from the web app (webhooks skipped)
+  app.use(throttle);   // per-user limits on chat sends, checkouts / slips, admin uploads
 
   // Raw body for Stripe signature verification.
   app.use('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookRouter);

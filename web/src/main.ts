@@ -14,6 +14,7 @@ import { vuetify } from './plugins/vuetify';
 import { apiHooks } from './api/client';
 import { useAuthStore } from './stores/auth';
 import { vReveal } from './directives/reveal';
+import { installErrorHandlers } from './utils/appErrors';
 
 const app = createApp(App).use(createPinia()).use(router).use(vuetify).directive('reveal', vReveal);
 
@@ -26,5 +27,7 @@ apiHooks.onAuthError = (code) => {
     void router.push({ name: 'change-password' });
   }
 };
+
+installErrorHandlers(app, router);
 
 app.mount('#app');

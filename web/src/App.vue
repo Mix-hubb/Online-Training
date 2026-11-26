@@ -6,6 +6,9 @@ import PublicLayout from '@/layouts/PublicLayout.vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import InstructorLayout from '@/layouts/InstructorLayout.vue';
 import PartnerLayout from '@/layouts/PartnerLayout.vue';
+import { appError } from '@/utils/appErrors';
+
+const clearError = () => (appError.value = null);
 
 const route = useRoute();
 const layouts = { admin: AdminLayout, instructor: InstructorLayout, partner: PartnerLayout, public: PublicLayout };
@@ -27,5 +30,11 @@ const viewKey = (r: typeof route) => {
         <component :is="Component" :key="viewKey(r)" />
       </router-view>
     </component>
+    <v-snackbar :model-value="!!appError" :key="appError?.at" color="error" timeout="6000" location="bottom" @update:model-value="(v: boolean) => !v && clearError()">
+      {{ appError?.text }}
+      <template #actions>
+        <v-btn variant="text" @click="clearError">Close</v-btn>
+      </template>
+    </v-snackbar>
   </v-app>
 </template>
