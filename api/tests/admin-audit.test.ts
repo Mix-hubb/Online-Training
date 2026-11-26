@@ -47,6 +47,24 @@ describe('admin audit log', () => {
     const ids = c.lessons.map((l) => l.id).reverse();
     const r = await as(admin.id).put(`/admin/courses/${c.id}/lessons/order`).send({ ids });
     expect(r.status).toBe(200);
-    expect(r.body.map((l: { id: string }) => l.id)).toEqual(ids);
+    const after = await prisma.lesson.findMany({ where: { courseId: c.id }, orderBy: { order: 'asc' } });
+    expect(after.map((l) => l.id)).toEqual(ids);
+    expect(after.map((l) => l.order)).toEqual([1, 2, 3]);
+    expect(await prisma.auditLog.count({ where: { action: 'lesson.reorder' } })).toBe(1);
+  });
+
+  it('lesson reorder refuses a list that is not every lesson once, and changes nothing', async () => {
+    const admin = await makeUser('ADMIN');
+    const c = await makeCourse({ lessons: 3 });
+    const other = await makeCourse({ lessons: 1 });
+    const ids = c.lessons.map((l) => l.id);
+    const put = (list: string[]) => as(admin.id).put(`/admin/courses/${c.id}/lessons/order`).send({ ids: list });
+    expect((await put([ids[2]!, ids[1]!])).status).toBe(400); // one missing
+    expect((await put([ids[2]!, ids[1]!, ids[1]!])).status).toBe(400); // duplicate
+    expect((await put([ids[2]!, ids[1]!, other.lessons[0]!.id])).status).toBe(400); // another course's lesson
+    const after = await prisma.lesson.findMany({ where: { courseId: c.id }, orderBy: { order: 'asc' } });
+    expect(after.map((l) => l.id)).toEqual(ids);
+    const o = await prisma.lesson.findUniqueOrThrow({ where: { id: other.lessons[0]!.id } });
+    expect(o.order).toBe(1);
   });
 });

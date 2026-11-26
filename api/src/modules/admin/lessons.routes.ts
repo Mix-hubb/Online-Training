@@ -23,10 +23,22 @@ const lessonFields = z.object({
   durationSec: z.number().int().min(0).optional(),
 });
 
-/** Two-phase renumber because of @@unique([courseId, order]). */
-export async function renumber(tx: Tx, courseId: string, idsInOrder: string[]) {
-  for (let i = 0; i < idsInOrder.length; i++) await tx.lesson.update({ where: { id: idsInOrder[i] }, data: { order: -(i + 1) } });
-  for (let i = 0; i < idsInOrder.length; i++) await tx.lesson.update({ where: { id: idsInOrder[i] }, data: { order: i + 1 } });
+/**
+ * Sets order = position in idsInOrder (1-based). Two statements, whatever the lesson count (it used to be two
+ * UPDATEs per lesson, one DB round trip each: slow when the DB is far away). Negative first because of
+ * @@unique([courseId, order]). Throws `onMismatch()` (rolling back the transaction) when idsInOrder does not
+ * match every lesson of the course, before any clash with the unique index can happen.
+ */
+export async function renumber(tx: Tx, courseId: string, idsInOrder: string[], onMismatch?: () => Error): Promise<void> {
+  const n = await tx.$executeRaw`
+    UPDATE "Lesson" l SET "order" = -t.ord::int
+    FROM unnest(${idsInOrder}::text[]) WITH ORDINALITY AS t(id, ord)
+    WHERE l."id" = t.id AND l."courseId" = ${courseId}`;
+  if (onMismatch) {
+    const left = await tx.lesson.count({ where: { courseId, order: { gt: 0 } } });
+    if (n !== idsInOrder.length || left > 0) throw onMismatch();
+  }
+  await tx.$executeRaw`UPDATE "Lesson" SET "order" = -"order" WHERE "courseId" = ${courseId} AND "order" < 0`;
 }
 
 lessonsAdminRouter.post(
@@ -75,15 +87,16 @@ lessonsAdminRouter.delete(
 lessonsAdminRouter.put(
   '/courses/:id/lessons/order',
   h(async (req, res) => {
-    const { ids } = body(req, z.object({ ids: z.array(z.string()).min(1) }));
-    const existing = await prisma.lesson.findMany({ where: { courseId: req.params.id }, select: { id: true } });
-    const set = new Set(existing.map((e) => e.id));
-    if (ids.length !== set.size || !ids.every((i) => set.has(i))) throw new AppError('VALIDATION_FAILED', 400, 'The list must contain every lesson once');
+    // Few round trips on purpose (the admin drags lessons and expects it to stick at once): the check that the
+    // list holds every lesson of the course exactly once happens inside the transaction, from the row counts.
+    const { ids } = body(req, z.object({ ids: z.array(z.string()).min(1).max(1000) }));
+    const bad = () => new AppError('VALIDATION_FAILED', 400, 'The list must contain every lesson once');
+    if (new Set(ids).size !== ids.length) throw bad();
     await prisma.$transaction(async (tx) => {
-      await renumber(tx, req.params.id, ids);
+      await renumber(tx, req.params.id, ids, bad);
       await writeAudit(req.user!.id, 'lesson.reorder', 'Course', req.params.id, { ids }, tx);
     });
-    res.json(await prisma.lesson.findMany({ where: { courseId: req.params.id }, orderBy: { order: 'asc' } }));
+    res.json({ ok: true });
   }),
 );
 
