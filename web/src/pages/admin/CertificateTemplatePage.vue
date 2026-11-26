@@ -1,23 +1,37 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import ImageUpload from '@/components/admin/ImageUpload.vue';
 import * as api from '@/api/admin/certificateTemplate';
 import { errorMessage } from '@/api/client';
 const t = ref<api.CertificateTemplate | null>(null);
 const preview = ref('');
+const previewErr = ref('');
 const busy = ref(false);
 const err = ref('');
+async function loadPreview() {
+  previewErr.value = '';
+  try {
+    const url = await api.previewBlobUrl();
+    if (preview.value) URL.revokeObjectURL(preview.value);
+    preview.value = url;
+  } catch (e) {
+    previewErr.value = errorMessage(e);
+  }
+}
 onMounted(async () => {
   t.value = await api.getTemplate();
-  preview.value = api.previewUrl();
+  void loadPreview();
+});
+onBeforeUnmount(() => {
+  if (preview.value) URL.revokeObjectURL(preview.value);
 });
 async function save() {
   busy.value = true;
   err.value = '';
   try {
     t.value = await api.saveTemplate(t.value!);
-    preview.value = api.previewUrl();
+    void loadPreview();
   } catch (e) {
     err.value = errorMessage(e);
   } finally {
@@ -48,7 +62,9 @@ async function save() {
       </section>
       <section class="panel pa-5 d-flex flex-column ga-3 preview" aria-label="Preview">
         <span class="text-caption text-muted font-weight-bold text-uppercase" style="letter-spacing: 0.06em">Preview</span>
-        <iframe :key="preview" :src="preview" title="Certificate preview" class="frame" />
+        <iframe v-if="preview" :key="preview" :src="preview" title="Certificate preview" class="frame" />
+        <div v-else-if="previewErr" class="callout danger" role="alert">{{ previewErr }} <button type="button" class="row-link" @click="loadPreview">Try again</button></div>
+        <v-skeleton-loader v-else type="image" color="surface" class="frame" />
         <span class="text-caption text-muted">Save to refresh the preview.</span>
       </section>
     </div>
