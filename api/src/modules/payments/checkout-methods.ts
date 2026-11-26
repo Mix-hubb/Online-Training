@@ -8,6 +8,9 @@ import { AppError } from '../../lib/errors.js';
 import { cryptoProvider } from '../../providers/payments/index.js';
 
 export type PayMethod = 'card' | 'promptpay' | 'bank' | 'btc';
+
+/** Smallest charge Stripe accepts, in minor units (Stripe "minimum charge amounts"). */
+export const STRIPE_MIN = { usd: 50, thb: 1000 } as const;
 export type PayCurrency = 'usd' | 'thb';
 
 export interface MethodOption {

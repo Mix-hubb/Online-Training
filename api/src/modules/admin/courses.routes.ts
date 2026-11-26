@@ -24,6 +24,7 @@ import { paged, parsePage } from '../../lib/pagination.js';
 import { uniqueCourseSlug } from '../../lib/slug.js';
 import { video } from '../../providers/video/index.js';
 import { courseLearners } from '../learning/learners.service.js';
+import { STRIPE_MIN } from '../payments/checkout-methods.js';
 
 export const coursesAdminRouter = Router();
 
@@ -48,6 +49,11 @@ const courseFields = z.object({
 function checkPrice(c: { isFree?: boolean; priceMinor?: number; priceThbMinor?: number | null }) {
   if (c.isFree === false && !(c.priceMinor && c.priceMinor > 0) && !(c.priceThbMinor && c.priceThbMinor > 0)) {
     throw new AppError('VALIDATION_FAILED', 400, 'A paid course needs a USD or THB price');
+  }
+  if (c.isFree === false) {
+    // Stripe refuses smaller charges (minimum charge amounts: USD 0.50, THB 10), so a lower price could never be paid by card or PromptPay.
+    if (c.priceMinor && c.priceMinor < STRIPE_MIN.usd) throw new AppError('VALIDATION_FAILED', 400, 'The USD price must be at least $0.50 (the smallest card payment)');
+    if (c.priceThbMinor && c.priceThbMinor < STRIPE_MIN.thb) throw new AppError('VALIDATION_FAILED', 400, 'The THB price must be at least ฿10 (the smallest card or PromptPay payment)');
   }
 }
 

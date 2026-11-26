@@ -5,7 +5,7 @@ import { config } from '../../config.js';
 import { AppError } from '../../lib/errors.js';
 import { markOrderPaid } from '../../lib/order-paid.js';
 import { cryptoProvider } from '../../providers/payments/index.js';
-import { resolveMethod, type PayCurrency, type PayMethod } from './checkout-methods.js';
+import { resolveMethod, STRIPE_MIN, type PayCurrency, type PayMethod } from './checkout-methods.js';
 import { stripe } from './stripe.js';
 
 export async function loadPurchasable(courseId: string, userId: string): Promise<Course> {
@@ -51,6 +51,10 @@ export async function startCheckout(user: User, courseId: string, method: PayMet
 
   // Check before creating the order, or every click while Stripe is not set up leaves a stray PENDING order.
   if (!stripe && !config.DEV_FAKE_PAYMENTS) throw new AppError('PAYMENT_METHOD_UNAVAILABLE', 503, 'Card payments are not set up');
+  // Stripe refuses charges below its minimum; say so instead of failing inside Stripe (older courses may have a lower price).
+  if (option.amountMinor < STRIPE_MIN[currency]) {
+    throw new AppError('PAYMENT_METHOD_UNAVAILABLE', 400, 'This price is below the smallest card or PromptPay payment. Choose another payment method.');
+  }
   const order = await prisma.order.create({
     data: { userId: user.id, courseId, amountMinor: option.amountMinor, currency, provider: 'STRIPE', method },
   });
@@ -64,7 +68,9 @@ export async function startCheckout(user: User, courseId: string, method: PayMet
     return { orderId: order.id, url: successUrl.replace('{CHECKOUT_SESSION_ID}', sessionId) };
   }
 
-  const session = await stripe.checkout.sessions.create({
+  let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+  try {
+    session = await stripe.checkout.sessions.create({
     mode: 'payment',
     payment_method_types: [method === 'promptpay' ? 'promptpay' : 'card'],
     customer_email: user.email,
@@ -79,7 +85,13 @@ export async function startCheckout(user: User, courseId: string, method: PayMet
     ],
     success_url: successUrl,
     cancel_url: `${config.WEB_URL}/courses/${course.slug}?checkout=cancelled`,
-  });
+    });
+  } catch (err) {
+    // Stripe said no (e.g. PromptPay not turned on in the Stripe account): close the order and give a clear message.
+    console.error(`Stripe checkout failed for order ${order.id} (${method}/${currency}):`, err instanceof Error ? err.message : err);
+    await prisma.order.update({ where: { id: order.id }, data: { status: 'FAILED' } });
+    throw new AppError('PAYMENT_METHOD_UNAVAILABLE', 503, 'This payment method could not be started. Try again or choose another method.');
+  }
   await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: session.id } });
   return { orderId: order.id, url: session.url };
 }

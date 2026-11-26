@@ -20,6 +20,24 @@ describe('payment methods', () => {
     expect(bad2.body.error.code).toBe('PAYMENT_METHOD_UNAVAILABLE');
   });
 
+  it('prices below the Stripe minimum: refused in admin, no order at checkout', async () => {
+    const admin = await makeUser('ADMIN');
+    const c = await makeCourse({ isFree: false, priceMinor: 1000, priceThbMinor: 35000 });
+    const tooLow = await as(admin.id).patch(`/admin/courses/${c.id}`).send({ priceThbMinor: 100 });
+    expect(tooLow.status).toBe(400);
+    expect(tooLow.body.error.message).toContain('฿10');
+    expect((await as(admin.id).patch(`/admin/courses/${c.id}`).send({ priceMinor: 49 })).status).toBe(400);
+    expect((await as(admin.id).patch(`/admin/courses/${c.id}`).send({ priceThbMinor: 1000, priceMinor: 50 })).status).toBe(200);
+
+    // A course saved with a low price before this rule: checkout says why and leaves no PENDING order.
+    const old = await makeCourse({ isFree: false, priceMinor: 100, priceThbMinor: 100 });
+    const u = await makeUser();
+    const r = await as(u.id).post(`/courses/${old.id}/checkout`).send({ method: 'promptpay', currency: 'thb' });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe('PAYMENT_METHOD_UNAVAILABLE');
+    expect(await prisma.order.count({ where: { courseId: old.id } })).toBe(0);
+  });
+
   it('dev checkout pays with the THB price', async () => {
     const u = await makeUser();
     const c = await makeCourse({ isFree: false, priceMinor: 1000, priceThbMinor: 35000 });
