@@ -6,6 +6,7 @@ import { paged } from '../../lib/pagination.js';
 import type { CourseListQuery } from './catalog.schemas.js';
 import { availableMethods } from '../payments/checkout-methods.js';
 import { ratingSummary } from '../reviews/reviews.service.js';
+import { isHidden } from '../courses/access.js';
 
 export const cardInclude = {
   category: { select: { id: true, name: true, slug: true } },
@@ -78,7 +79,11 @@ export async function courseDetail(slug: string, viewer?: User) {
       where: { slug },
       include: {
         ...cardInclude,
-        lessons: { orderBy: { order: 'asc' }, select: { id: true, order: true, title: true, description: true, durationSec: true } },
+        lessons: {
+          orderBy: { order: 'asc' },
+          select: { id: true, order: true, title: true, description: true, durationSec: true, isFreePreview: true },
+        },
+        owner: { select: { id: true, name: true, avatarUrl: true, instructorProfile: { select: { headline: true, status: true } } } },
         quiz: { include: { _count: { select: { questions: true } } } },
       },
     }),
@@ -94,11 +99,14 @@ export async function courseDetail(slug: string, viewer?: User) {
   ]);
   if (!c) throw new AppError('NOT_FOUND', 404);
 
-  const isStaff = viewer?.role === 'ADMIN';
+  // Staff: admins, and the course's own instructors (owner and co-instructors).
+  const isStaff =
+    viewer?.role === 'ADMIN' || (viewer?.role === 'INSTRUCTOR' && c.instructors.some((i) => i.userId === viewer.id));
 
-  // DRAFT: admins only. ARCHIVED: owners (and admins) only.
-  if (c.status === 'DRAFT' && !isStaff) throw new AppError('NOT_FOUND', 404);
+  // DRAFT / IN_REVIEW: staff only. ARCHIVED: learners who own it (and staff) only.
+  if (isHidden(c.status) && !isStaff) throw new AppError('NOT_FOUND', 404);
   if (c.status === 'ARCHIVED' && !isStaff && !enrollment) throw new AppError('COURSE_UNAVAILABLE', 410);
+  const owner = c.owner;
 
 
   return {
@@ -106,6 +114,16 @@ export async function courseDetail(slug: string, viewer?: User) {
     description: c.description,
     outcomes: c.outcomes,
     hasIntroVideo: Boolean(c.introVideoId),
+    // The instructor who made the course (null on older admin-made courses). Linked to the public profile when approved.
+    owner: owner
+      ? {
+          id: owner.id,
+          name: owner.name,
+          avatarUrl: owner.avatarUrl,
+          headline: owner.instructorProfile?.headline ?? null,
+          public: owner.instructorProfile?.status === 'APPROVED',
+        }
+      : null,
     lessons: c.lessons,
     quiz: c.quiz
       ? {

@@ -42,7 +42,8 @@ export async function assertLessonUnlocked(enrollment: Enrollment, lesson: Lesso
   ]);
   const states = lessonStates(lessons.map((l) => l.id), done);
   const st = states.find((s) => s.lessonId === lesson.id);
-  if (!st?.unlocked) throw new AppError('LOCKED', 403, 'Finish the previous lesson first');
+  // Free preview lessons are open to everyone, in any order.
+  if (!lesson.isFreePreview && !st?.unlocked) throw new AppError('LOCKED', 403, 'Finish the previous lesson first');
 }
 
 export async function recordProgress(

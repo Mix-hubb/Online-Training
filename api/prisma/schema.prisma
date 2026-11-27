@@ -34,6 +34,14 @@ enum CourseStatus {
   DRAFT
   PUBLISHED
   ARCHIVED // hidden from home + not purchasable; existing owners keep access
+  IN_REVIEW // 2026-11-27: sent by its instructor owner, waiting for admin approval (not public)
+}
+
+// 2026-11-27: instructors sign up themselves and wait for an admin decision.
+enum InstructorStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum Level {
@@ -119,11 +127,13 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]
 
-  teaches     CourseInstructor[]
-  threads     SupportThread[]
-  messages    ThreadMessage[]
-  partnerLink Partner?
-  reviews     CourseReview[]
+  teaches           CourseInstructor[]
+  ownedCourses      Course[]           @relation("CourseOwner")
+  instructorProfile InstructorProfile?
+  threads           SupportThread[]
+  messages          ThreadMessage[]
+  partnerLink       Partner?
+  reviews           CourseReview[]
 }
 
 model AuthToken {
@@ -177,6 +187,13 @@ model Course {
   updatedAt     DateTime     @updatedAt
   publishedAt   DateTime?
   pinOrder      Int? // admin pin: null = not pinned; pinned PUBLISHED courses list first by pinOrder
+  // 2026-11-27: the instructor who created the course. Owns it, gets all of its revenue share. Null = an older
+  // admin-made course (managed by admins as before, per-course instructor shares).
+  ownerId       String?
+  submittedAt   DateTime? // last time the owner sent it for review
+  reviewNote    String? // admin's reason when the course was sent back
+
+  owner User? @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 
   category    Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   tags        CourseTag[]
@@ -189,6 +206,7 @@ model Course {
   reviews     CourseReview[]
 
   @@index([status])
+  @@index([ownerId])
 }
 
 model CourseTag {
@@ -211,6 +229,7 @@ model Lesson {
   durationSec    Int         @default(0)
   sourceHeight   Int? // source resolution in px (e.g. 2160); never upscale
   attachmentUrls String[]
+  isFreePreview  Boolean     @default(false) // 2026-11-27: anyone can watch it without buying the course
 
   course     Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   progress   LessonProgress[]
@@ -614,4 +633,41 @@ model CourseReview {
 
   @@unique([courseId, userId])
   @@index([courseId, status, createdAt])
+}
+
+// Instructor application and public profile (2026-11-27). One per instructor account.
+model InstructorProfile {
+  userId         String           @id
+  status         InstructorStatus @default(PENDING)
+  phone          String
+  headline       String // short title shown on the profile card, e.g. "Mining engineer, 12 years"
+  bio            String
+  expertise      String[]
+  // Share of the sales of every course this instructor owns, basis points (3000 = 30%). Set by an admin.
+  sharePercentBp Int              @default(0)
+  rejectReason   String?
+  submittedAt    DateTime         @default(now())
+  reviewedAt     DateTime?
+  reviewedById   String?
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents InstructorDocument[]
+
+  @@index([status])
+}
+
+// Qualification documents (PDF or image), stored privately. The instructor picks which ones the public profile shows.
+model InstructorDocument {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  storageKey String
+  mime       String
+  sizeBytes  Int
+  isPublic   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  profile InstructorProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
 }

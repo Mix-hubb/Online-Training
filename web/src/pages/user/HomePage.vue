@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Home: banners, continue learning, filters + course grid, partner logos (spec 6 + 15.6/15.8).
 // Admin-pinned courses come first in the grid (server order); learners see no pinned label.
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import HeroBanner from '@/components/course/HeroBanner.vue';
 import CourseCard from '@/components/course/CourseCard.vue';
@@ -9,10 +9,12 @@ import CourseCover from '@/components/course/CourseCover.vue';
 import CourseFilters from '@/components/course/CourseFilters.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import PartnerLogos from '@/components/common/PartnerLogos.vue';
+import InstructorsSection from '@/components/instructor/InstructorsSection.vue';
 import * as catalog from '@/api/catalog';
 import * as learning from '@/api/learning';
 import { useAuthStore } from '@/stores/auth';
 import { useLanding } from '@/composables/useLanding';
+import { smoothScrollTo } from '@/utils/smoothScroll';
 import type { CourseCard as Card, MyCourse, Paged, Taxon } from '@/types';
 
 const auth = useAuthStore();
@@ -66,14 +68,22 @@ watch(
 );
 
 onMounted(async () => {
-  void load();
-  void fetchCourses();
+  const pending: Promise<unknown>[] = [Promise.resolve(load()), fetchCourses()];
   catalog.categories().then((c) => (categories.value = c)).catch(() => undefined);
   catalog.tags().then((x) => (tags.value = x)).catch(() => undefined);
   if (learner.value) {
     learning.myCourses().then((m) => (mine.value = m)).catch(() => undefined);
-    cont.value = await learning.continueLearning().catch(() => []);
+    pending.push(learning.continueLearning().then((c) => (cont.value = c)).catch(() => (cont.value = [])));
   }
+  // Arriving from another page via /#instructors (header link): the router scrolls before the banners and
+  // course grid load and push the section down, so glide to it again once they are in.
+  await Promise.allSettled(pending);
+  if (!route.hash) return;
+  await nextTick();
+  const el = document.getElementById(route.hash.slice(1));
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  void smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - 88);
 });
 const hasFilters = computed(() => !!(filters.value.q || filters.value.category || filters.value.level || filters.value.price || filters.value.tag));
 const cardCta = (c: Card) => (mineById.value.has(c.id) ? 'Enrolled' : c.isFree ? 'Start free' : 'View course');
@@ -147,6 +157,8 @@ function clear() {
         </nav>
       </template>
     </section>
+
+    <InstructorsSection />
 
     <section v-reveal class="how" aria-labelledby="how-h">
       <div class="how-head">

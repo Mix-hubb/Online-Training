@@ -65,7 +65,7 @@ async function open(id: string, autoplay = false) {
     const p = await learningApi.play(id);
     await nextTick();
     void loadHls(p.url, p.resumeAt, p.qualities, autoplay);
-    if (!data.value?.preview) reporter.attach(id);
+    if (!data.value?.preview && !data.value?.freePreview) reporter.attach(id);
   } catch {
     videoMsg.value = 'The video could not be loaded.';
   }
@@ -89,6 +89,10 @@ onMounted(async () => {
   <div v-if="!data" class="page"><v-skeleton-loader type="image, heading" color="surface" /></div>
   <div v-else class="learn">
     <div v-if="data.preview" class="callout mb-2">Preview mode: progress is not saved.</div>
+    <div v-else-if="data.freePreview" class="callout mb-2">
+      <span class="flex-grow-1">Free preview: you can watch the lessons marked free. Get the course to open every lesson and the final test.</span>
+      <v-btn size="small" color="primary" :to="`/courses/${slug}`">Get the course</v-btn>
+    </div>
     <div class="top">
       <div class="d-flex flex-column ga-1" style="min-width: 0">
         <router-link :to="`/courses/${slug}`" class="back">← {{ data.course.title }}</router-link>
@@ -120,7 +124,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-if="lesson && !data.preview" class="callout" :class="{ success: lesson.completed }">
+        <div v-if="lesson && !data.preview && !data.freePreview" class="callout" :class="{ success: lesson.completed }">
           <v-icon :icon="lesson.completed ? 'mdi-check-circle-outline' : 'mdi-clock-outline'" size="18" :color="lesson.completed ? 'success' : 'primary'" />
           <span class="flex-grow-1 text-2">{{ lesson.completed ? 'Lesson complete. The next lesson is open.' : 'Watch at least 90% of this lesson to unlock the next one.' }}</span>
           <span class="text-body-2 text-muted text-no-wrap">Watched {{ watchedPct }}%</span>
@@ -141,7 +145,7 @@ onMounted(async () => {
           </div>
         </section>
 
-        <section v-if="!data.preview" class="panel pad" aria-labelledby="ask-h">
+        <section v-if="!data.preview && !data.freePreview" class="panel pad" aria-labelledby="ask-h">
           <div class="d-flex flex-wrap align-center justify-space-between ga-2">
             <h2 id="ask-h">Ask your instructor</h2>
             <span class="text-caption text-muted">Private: only you and the instructors see it</span>

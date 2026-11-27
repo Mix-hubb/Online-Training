@@ -2,7 +2,8 @@
 
 export type Role = 'USER' | 'INSTRUCTOR' | 'PARTNER' | 'ADMIN';
 export type Level = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type CourseStatus = 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED';
+export type InstructorStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type Currency = 'usd' | 'thb';
 export type PayMethod = 'card' | 'promptpay' | 'bank' | 'btc';
 
@@ -16,6 +17,8 @@ export interface CurrentUser {
   mustChangePassword: boolean;
   hasPassword: boolean;
   partner: { id: string; name: string } | null;
+  /** INSTRUCTOR only: the sign-up application status (tools open when APPROVED). */
+  instructorStatus?: InstructorStatus | null;
 }
 
 export interface Paged<T> {
@@ -61,7 +64,9 @@ export interface CourseDetail extends CourseCard {
   description: string;
   outcomes: string[];
   hasIntroVideo: boolean;
-  lessons: { id: string; order: number; title: string; description: string | null; durationSec: number }[];
+  lessons: { id: string; order: number; title: string; description: string | null; durationSec: number; isFreePreview?: boolean }[];
+  /** The instructor who made the course (null on older admin-made courses). */
+  owner?: { id: string; name: string; avatarUrl: string | null; headline: string | null; public: boolean } | null;
   quiz: { questionCount: number; passPercent: number; timeLimitMin: number | null; maxAttempts: number } | null;
   paymentMethods: MethodOption[];
   rating: { average: number | null; count: number };
@@ -96,6 +101,8 @@ export interface LearnLesson {
   durationSec: number;
   videoStatus: 'PROCESSING' | 'READY' | 'FAILED';
   attachmentUrls: string[];
+  /** Free preview lesson: open to anyone signed in, in any order. */
+  isFreePreview?: boolean;
   unlocked: boolean;
   completed: boolean;
   watchedSec: number;
@@ -104,6 +111,8 @@ export interface LearnLesson {
 
 export interface LearnData {
   preview: boolean;
+  /** Not enrolled: only the course's free preview lessons are open, nothing is saved. */
+  freePreview?: boolean;
   course: { id: string; slug: string; title: string; status: CourseStatus };
   enrollment: { id: string; status: string; cycle: number; lastLessonId: string | null } | null;
   lessons: LearnLesson[];
@@ -334,4 +343,46 @@ export interface Payout {
 
 export interface ApiErrorBody {
   error: { code: string; message: string };
+}
+
+// Instructor profiles (2026-11-27)
+export interface InstructorDoc {
+  id: string;
+  title: string;
+  mime: string;
+  sizeBytes?: number;
+  isPublic?: boolean;
+  createdAt: string;
+  url: string;
+}
+export interface InstructorProfile {
+  status: InstructorStatus;
+  phone: string | null;
+  headline: string | null;
+  bio: string | null;
+  expertise: string[];
+  sharePercentBp: number;
+  rejectReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  documents: InstructorDoc[];
+}
+export interface InstructorCard {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  headline: string | null;
+  expertise: string[];
+  courseCount: number;
+}
+export interface PublicInstructor {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  headline: string | null;
+  bio: string | null;
+  expertise: string[];
+  approvedAt: string | null;
+  documents: InstructorDoc[];
+  courses: CourseCard[];
 }

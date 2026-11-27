@@ -65,11 +65,12 @@ describe('instructor quiz management', () => {
     expect((await as(admin.id).put(`/admin/courses/${c.id}/quiz`).send(settings)).status).toBe(200);
   });
 
-  it('assigned instructor still cannot edit course details or lessons', async () => {
+  it('assigned instructor of an admin-run course still cannot edit course details or lessons', async () => {
     const { ins, c } = await setup();
     expect((await as(ins.id).patch(`/admin/courses/${c.id}`).send({ title: 'Hacked' })).status).toBe(403);
-    expect((await as(ins.id).patch(`/instructor/courses/${c.id}`).send({ title: 'Hacked' })).status).toBe(404);
+    expect((await as(ins.id).patch(`/instructor/courses/${c.id}`).send({ title: 'Hacked' })).status).toBe(403);
     expect((await as(ins.id).post(`/admin/courses/${c.id}/lessons`).send({ title: 'L' })).status).toBe(403);
+    expect((await as(ins.id).post(`/instructor/courses/${c.id}/lessons`).send({ title: 'L' })).status).toBe(403);
     expect((await prisma.course.findUniqueOrThrow({ where: { id: c.id } })).title).not.toBe('Hacked');
   });
 });

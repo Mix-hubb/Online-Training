@@ -137,6 +137,9 @@ async function resend() {
             By creating an account you agree to our <router-link to="/terms">Terms of Service</router-link> and
             <router-link to="/privacy">Privacy Policy</router-link>.
           </p>
+          <p v-if="tab === 'register'" class="agree mt-2">
+            Want to teach? <router-link to="/register/instructor">Apply as an instructor</router-link>
+          </p>
         </section>
       </template>
     </div>

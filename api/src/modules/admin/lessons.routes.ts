@@ -5,6 +5,8 @@
 //   PUT    /admin/courses/:id/lessons/order  { ids: [...] }
 //   POST   /admin/lessons/:id/upload-init    -> { providerVideoId, uploadUrl, uploadHeaders }
 //   GET    /admin/lessons/:id/video-status   -> PROCESSING / READY / FAILED + duration + renditions
+// 2026-11-27: the same router is mounted under /instructor. Access: modules/courses/access.ts ('content');
+// isFreePreview = anyone can watch the lesson without buying the course.
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma, type Tx } from '../../db.js';
@@ -13,6 +15,7 @@ import { AppError } from '../../lib/errors.js';
 import { body } from '../../lib/validate.js';
 import { writeAudit } from '../../lib/audit.js';
 import { video, allowedRenditions } from '../../providers/video/index.js';
+import { assertCourse, courseIdOfLesson } from '../courses/access.js';
 
 export const lessonsAdminRouter = Router();
 
@@ -21,6 +24,7 @@ const lessonFields = z.object({
   description: z.string().max(5000).nullable().optional(),
   attachmentUrls: z.array(z.string().url()).max(10).optional(),
   durationSec: z.number().int().min(0).optional(),
+  isFreePreview: z.boolean().optional(),
 });
 
 /**
@@ -45,8 +49,7 @@ lessonsAdminRouter.post(
   '/courses/:id/lessons',
   h(async (req, res) => {
     const input = body(req, lessonFields);
-    const course = await prisma.course.findUnique({ where: { id: req.params.id } });
-    if (!course) throw new AppError('NOT_FOUND', 404);
+    const course = await assertCourse(req.user, req.params.id, 'content');
     const last = await prisma.lesson.findFirst({ where: { courseId: course.id }, orderBy: { order: 'desc' } });
     const lesson = await prisma.lesson.create({
       data: { ...input, attachmentUrls: input.attachmentUrls ?? [], courseId: course.id, order: (last?.order ?? 0) + 1 },
@@ -60,6 +63,7 @@ lessonsAdminRouter.patch(
   '/lessons/:id',
   h(async (req, res) => {
     const input = body(req, lessonFields.partial());
+    await assertCourse(req.user, await courseIdOfLesson(req.params.id), 'content');
     const lesson = await prisma.lesson.update({ where: { id: req.params.id }, data: input }).catch(() => {
       throw new AppError('NOT_FOUND', 404);
     });
@@ -73,6 +77,7 @@ lessonsAdminRouter.delete(
   h(async (req, res) => {
     const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id } });
     if (!lesson) throw new AppError('NOT_FOUND', 404);
+    await assertCourse(req.user, lesson.courseId, 'content');
     await prisma.$transaction(async (tx) => {
       await tx.lesson.delete({ where: { id: lesson.id } });
       const rest = await tx.lesson.findMany({ where: { courseId: lesson.courseId }, orderBy: { order: 'asc' }, select: { id: true } });
@@ -92,6 +97,7 @@ lessonsAdminRouter.put(
     const { ids } = body(req, z.object({ ids: z.array(z.string()).min(1).max(1000) }));
     const bad = () => new AppError('VALIDATION_FAILED', 400, 'The list must contain every lesson once');
     if (new Set(ids).size !== ids.length) throw bad();
+    await assertCourse(req.user, req.params.id, 'content');
     await prisma.$transaction(async (tx) => {
       await renumber(tx, req.params.id, ids, bad);
       await writeAudit(req.user!.id, 'lesson.reorder', 'Course', req.params.id, { ids }, tx);
@@ -105,6 +111,7 @@ lessonsAdminRouter.post(
   h(async (req, res) => {
     const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id } });
     if (!lesson) throw new AppError('NOT_FOUND', 404);
+    await assertCourse(req.user, lesson.courseId, 'content');
     if (lesson.bunnyVideoId) await video.deleteVideo(lesson.bunnyVideoId).catch(() => undefined);
     const v = await video.createVideo(lesson.title);
     await prisma.$transaction([
@@ -119,8 +126,9 @@ lessonsAdminRouter.post(
 lessonsAdminRouter.get(
   '/lessons/:id/video-status',
   h(async (req, res) => {
-    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id }, select: { id: true, bunnyVideoId: true } });
+    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.id }, select: { id: true, bunnyVideoId: true, courseId: true } });
     if (!lesson) throw new AppError('NOT_FOUND', 404);
+    await assertCourse(req.user, lesson.courseId, 'view');
     if (!lesson.bunnyVideoId) return res.json({ status: 'NONE' });
     res.json(await syncVideoStatus(lesson.id));
   }),

@@ -1,26 +1,28 @@
 <script setup lang="ts">
 // Instructors (2026-11-23): instructor logins on their own page, apart from Users and Partners.
-// Add an instructor here (new login with a temporary password, shown once), or promote a learner who already has an account.
-// Click a name to open the instructor's own page (assigned courses, shares, earnings; 2026-11-24).
-// Which courses they teach and each course's share are set in the course editor's Instructors tab.
-import { onMounted, ref, watch } from 'vue';
+// 2026-11-27: instructors sign up themselves (/register/instructor) with their documents. New applications wait
+// under "Waiting for approval"; open one to check the documents and approve or turn it down. There is no
+// "Add instructor" any more. Each approved instructor's revenue share (one percent for all of the courses they
+// own) is set on their page.
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import StatusPill from '@/components/common/StatusPill.vue';
 import * as api from '@/api/admin/instructors';
 import * as users from '@/api/admin/users';
-import { ApiError, errorMessage } from '@/api/client';
-import type { Paged } from '@/types';
-import { date, money } from '@/utils/format';
+import { errorMessage } from '@/api/client';
+import type { InstructorStatus, Paged } from '@/types';
+import { date, money, percentBp } from '@/utils/format';
 
-const q = ref({ q: '', status: '', page: 1 });
-const data = ref<Paged<api.InstructorRow> | null>(null);
+const route = useRoute();
+const router = useRouter();
+const initial = (['PENDING', 'APPROVED', 'REJECTED'] as const).find((s) => s === route.query.approval) ?? 'APPROVED';
+const q = ref({ q: '', status: '', approval: initial as InstructorStatus, page: 1 });
+const data = ref<(Paged<api.InstructorRow> & { counts: Partial<Record<InstructorStatus, number>> }) | null>(null);
 const err = ref('');
 const busy = ref(false);
-const add = ref<{ name: string; email: string; exists: boolean } | null>(null);
-const addErr = ref('');
 const temp = ref<{ email: string; temporaryPassword: string } | null>(null);
-const promoted = ref('');
 const banTarget = ref<api.InstructorRow | null>(null);
 const removeTarget = ref<api.InstructorRow | null>(null);
 
@@ -30,12 +32,19 @@ async function load() {
 onMounted(load);
 let t: ReturnType<typeof setTimeout> | undefined;
 watch(
-  q,
+  () => [q.value.q, q.value.status],
   () => {
+    q.value.page = 1;
     clearTimeout(t);
     t = setTimeout(load, 250);
   },
-  { deep: true },
+);
+watch(
+  () => [q.value.approval, q.value.page],
+  () => {
+    void router.replace({ query: { approval: q.value.approval } });
+    void load();
+  },
 );
 
 async function run(fn: () => Promise<unknown>) {
@@ -52,31 +61,6 @@ async function run(fn: () => Promise<unknown>) {
     busy.value = false;
   }
 }
-
-const validEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
-function openAdd() {
-  addErr.value = '';
-  add.value = { name: '', email: '', exists: false };
-}
-async function submitAdd() {
-  const a = add.value!;
-  if (!a.name.trim() || !validEmail(a.email)) return;
-  addErr.value = '';
-  busy.value = true;
-  try {
-    const r = await api.createInstructor({ name: a.name.trim(), email: a.email.trim(), promoteExisting: a.exists || undefined });
-    add.value = null;
-    if (r.temporaryPassword) temp.value = { email: r.email, temporaryPassword: r.temporaryPassword };
-    else promoted.value = r.email;
-    await load();
-  } catch (e) {
-    // The email already belongs to a learner: ask before turning that account into an instructor.
-    if (e instanceof ApiError && e.code === 'ACCOUNT_EXISTS') a.exists = true;
-    else addErr.value = errorMessage(e);
-  } finally {
-    busy.value = false;
-  }
-}
 async function reset(i: api.InstructorRow) {
   await run(async () => (temp.value = await api.resetInstructorPassword(i.id)));
 }
@@ -84,16 +68,29 @@ async function copy() {
   await navigator.clipboard.writeText(temp.value!.temporaryPassword).catch(() => undefined);
 }
 const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amountMinor > 0);
+const tabs = computed(() => [
+  { v: 'APPROVED' as const, label: 'Approved', n: data.value?.counts.APPROVED ?? 0 },
+  { v: 'PENDING' as const, label: 'Waiting for approval', n: data.value?.counts.PENDING ?? 0 },
+  { v: 'REJECTED' as const, label: 'Not approved', n: data.value?.counts.REJECTED ?? 0 },
+]);
+const approved = computed(() => q.value.approval === 'APPROVED');
 </script>
 
 <template>
   <div class="admin-page d-flex flex-column ga-6">
-    <AdminPageHeader title="Instructors" subtitle="Instructor logins. Open an instructor to see their courses, shares and earnings. Assign courses and set shares in the course editor's Instructors tab.">
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="openAdd">Add instructor</v-btn>
-    </AdminPageHeader>
+    <AdminPageHeader
+      title="Instructors"
+      subtitle="Instructors apply with their documents. Approve new applications here, then set each instructor's revenue share on their page."
+    />
+    <div role="tablist" aria-label="Instructor applications" class="ul-tabs">
+      <button v-for="tb in tabs" :key="tb.v" type="button" role="tab" :aria-selected="q.approval === tb.v" @click="(q.approval = tb.v), (q.page = 1)">
+        {{ tb.label }}
+        <span v-if="tb.n" class="count" :class="{ hot: tb.v === 'PENDING' }">{{ tb.n }}</span>
+      </button>
+    </div>
     <div class="filters">
       <div class="grow2"><label for="i-q" class="sr-only">Search instructors</label><input id="i-q" v-model="q.q" type="search" class="ot-input" placeholder="Search name or email" /></div>
-      <div class="grow1">
+      <div v-if="approved" class="grow1">
         <label for="i-s" class="sr-only">Status</label>
         <select id="i-s" v-model="q.status" class="ot-select">
           <option value="">All statuses</option>
@@ -103,20 +100,57 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
       </div>
     </div>
     <div v-if="err" class="callout danger" role="alert">{{ err }}</div>
-    <div v-if="promoted" class="callout success" role="status">
-      <span><strong>{{ promoted }}</strong> is now an instructor. They log in with their own password.</span>
-      <v-btn size="small" variant="text" icon="mdi-close" aria-label="Dismiss" @click="promoted = ''" />
-    </div>
     <v-skeleton-loader v-if="!data" type="table" color="surface" />
     <div v-else-if="!data.items.length && !q.q && !q.status" class="panel pa-10 text-center text-body-2 text-muted">
-      No instructors yet. Add one to give them a login.
+      {{
+        q.approval === 'PENDING'
+          ? 'No applications are waiting. New instructors apply from the sign-up page.'
+          : q.approval === 'REJECTED'
+            ? 'No turned-down applications.'
+            : 'No approved instructors yet.'
+      }}
     </div>
-    <div v-else class="table-scroll">
+
+    <div v-else-if="!approved" class="table-scroll">
       <table class="data-table" style="min-width: 760px">
+        <caption class="sr-only">Instructor applications</caption>
+        <thead>
+          <tr>
+            <th scope="col">Applicant</th>
+            <th scope="col">Headline</th>
+            <th scope="col">Documents</th>
+            <th scope="col">Sent</th>
+            <th scope="col" class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="i in data.items" :key="i.id">
+            <td>
+              <router-link :to="`/admin/instructors/${i.id}`" class="font-weight-medium">{{ i.name }}</router-link>
+              <div class="text-caption text-muted">{{ i.email }}</div>
+            </td>
+            <td style="max-width: 320px">
+              <span class="d-block text-truncate">{{ i.headline ?? '—' }}</span>
+              <span v-if="i.rejectReason" class="d-block text-caption text-muted text-truncate">Reason: {{ i.rejectReason }}</span>
+            </td>
+            <td>{{ i.documents }}</td>
+            <td class="text-no-wrap text-muted">{{ i.submittedAt ? date(i.submittedAt) : '—' }}</td>
+            <td class="text-right text-no-wrap">
+              <router-link :to="`/admin/instructors/${i.id}`" class="row-btn">Review</router-link>
+            </td>
+          </tr>
+          <tr v-if="!data.items.length"><td colspan="5" class="text-center text-muted">No applications match.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-else class="table-scroll">
+      <table class="data-table" style="min-width: 820px">
         <caption class="sr-only">Instructors</caption>
         <thead>
           <tr>
             <th scope="col">Instructor</th>
+            <th scope="col">Revenue share</th>
             <th scope="col">Unpaid</th>
             <th scope="col">Status</th>
             <th scope="col">Added</th>
@@ -128,6 +162,11 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
             <td>
               <router-link :to="`/admin/instructors/${i.id}`" class="font-weight-medium">{{ i.name }}</router-link>
               <div class="text-caption text-muted">{{ i.email }}<span v-if="i.mustChangePassword"> · temporary password</span></div>
+            </td>
+            <td class="text-no-wrap">
+              <router-link :to="`/admin/instructors/${i.id}#share`" :class="i.sharePercentBp ? '' : 'text-warning'">
+                {{ i.sharePercentBp ? percentBp(i.sharePercentBp) : 'Not set' }}
+              </router-link>
             </td>
             <td class="text-no-wrap">
               <template v-if="hasOutstanding(i)">
@@ -145,42 +184,19 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
                 type="button"
                 class="row-link danger"
                 :disabled="!!i.courses.length"
-                :title="i.courses.length ? 'Remove them from their courses first' : undefined"
+                :title="i.courses.length ? 'They still teach courses' : undefined"
                 @click="removeTarget = i"
               >
                 Remove role
               </button>
             </td>
           </tr>
-          <tr v-if="!data.items.length"><td colspan="5" class="text-center text-muted">No instructors match.</td></tr>
+          <tr v-if="!data.items.length"><td colspan="6" class="text-center text-muted">No instructors match.</td></tr>
         </tbody>
       </table>
     </div>
     <v-pagination v-if="data && data.pages > 1" v-model="q.page" :length="data.pages" density="comfortable" />
 
-    <v-dialog :model-value="!!add" max-width="480" @update:model-value="add = null">
-      <v-card v-if="add" color="surface" class="pa-2">
-        <v-card-title>{{ add.exists ? 'This email already has an account' : 'Add instructor' }}</v-card-title>
-        <v-card-text>
-          <template v-if="!add.exists">
-            <p class="text-body-2 text-muted mb-4">They get a login with a temporary password and must change it on first login. Then assign them to courses in the course editor.</p>
-            <v-text-field v-model="add.name" label="Name" class="mb-2" autofocus />
-            <v-text-field v-model="add.email" label="Email" type="email" :error-messages="add.email && !validEmail(add.email) ? 'Enter a valid email.' : undefined" />
-          </template>
-          <p v-else class="text-body-2 mb-0">
-            <strong>{{ add.email }}</strong> is a learner on this site. Make this account an instructor? They keep their password and their courses as a learner.
-          </p>
-          <div v-if="addErr" class="callout danger mt-3" role="alert">{{ addErr }}</div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="add = null">Cancel</v-btn>
-          <v-btn color="primary" variant="flat" :loading="busy" :disabled="!add.name.trim() || !validEmail(add.email)" @click="submitAdd">
-            {{ add.exists ? 'Make instructor' : 'Create' }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
     <v-dialog :model-value="!!temp" max-width="480" persistent>
       <v-card v-if="temp" color="surface" class="pa-2">
         <v-card-title>Temporary password</v-card-title>
@@ -205,5 +221,18 @@ const hasOutstanding = (i: api.InstructorRow) => i.outstanding.some((o) => o.amo
 .row-link:disabled {
   color: var(--ot-faint);
   cursor: not-allowed;
+}
+.count {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--ot-chip-bg, var(--ot-border));
+  color: var(--ot-text);
+}
+.count.hot {
+  background: var(--ot-warning-bg);
+  color: var(--ot-warning);
 }
 </style>

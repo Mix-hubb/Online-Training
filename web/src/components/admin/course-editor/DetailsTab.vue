@@ -4,7 +4,9 @@ import { onMounted, ref, watch } from 'vue';
 import ImageUpload from '@/components/admin/ImageUpload.vue';
 import VideoUpload from '@/components/admin/VideoUpload.vue';
 import * as api from '@/api/admin/courses';
-import * as tax from '@/api/admin/taxonomy';
+// Public lists: instructors use this editor too and cannot open the admin taxonomy routes.
+import * as catalog from '@/api/catalog';
+import type { Taxon } from '@/types';
 import { errorMessage } from '@/api/client';
 import type { Level } from '@/types';
 
@@ -24,8 +26,8 @@ const f = ref({
   allow4k: false,
 });
 const outcomes = ref<string[]>(['']);
-const cats = ref<tax.TaxonRow[]>([]);
-const tags = ref<tax.TaxonRow[]>([]);
+const cats = ref<Taxon[]>([]);
+const tags = ref<Taxon[]>([]);
 const busy = ref(false);
 const err = ref('');
 const ok = ref(false);
@@ -52,7 +54,7 @@ watch(
   { immediate: true },
 );
 onMounted(async () => {
-  [cats.value, tags.value] = await Promise.all([tax.categories(), tax.tags()]);
+  [cats.value, tags.value] = await Promise.all([catalog.categories(), catalog.tags()]);
 });
 const toMinor = (s: string) => (s.trim() ? Math.round(Number(s) * 100) : 0);
 

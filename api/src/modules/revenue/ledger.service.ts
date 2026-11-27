@@ -1,7 +1,9 @@
 // Revenue-share ledger (spec 15.1, changed 2026-11-22, see 16.2). Rows are never updated (except payout linking) or deleted.
 // On each paid order, in this order:
-//   1. INSTRUCTOR entries: every instructor assigned to the order's course with a share > 0 gets
-//      CourseInstructor.sharePercentBp of the order amount.
+//   1. INSTRUCTOR entries. A course with an owner (2026-11-27, instructor-made): ONE entry for the owner with
+//      InstructorProfile.sharePercentBp (the admin sets one percent per instructor for all of their courses);
+//      co-instructors get nothing from the system (the owner shares with them). An older course without an owner:
+//      every assigned instructor with a share > 0 gets CourseInstructor.sharePercentBp of the order amount.
 //   2. PARTNER entries: every co-investor with a share > 0 gets Partner.sharePercentBp of what is LEFT after step 1.
 // percentBp and baseMinor are SNAPSHOT on the entry, so changing a percent later never changes existing entries.
 // There are no refunds in the system (handled with the payment gateway, outside it), so no reversal entries.
@@ -29,11 +31,20 @@ export async function onOrderPaid(tx: Tx, order: Order) {
   };
 
   // 1. Instructors of this course.
-  const teachers = await tx.courseInstructor.findMany({
-    where: { courseId: order.courseId, sharePercentBp: { gt: 0 } },
-    include: { user: { select: { id: true, name: true } } },
-    orderBy: { assignedAt: 'asc' },
+  const course = await tx.course.findUnique({
+    where: { id: order.courseId },
+    select: { owner: { select: { id: true, name: true, instructorProfile: { select: { sharePercentBp: true } } } } },
   });
+  const owner = course?.owner;
+  const teachers = owner
+    ? (owner.instructorProfile?.sharePercentBp ?? 0) > 0
+      ? [{ user: { id: owner.id, name: owner.name }, sharePercentBp: owner.instructorProfile!.sharePercentBp }]
+      : []
+    : await tx.courseInstructor.findMany({
+        where: { courseId: order.courseId, sharePercentBp: { gt: 0 } },
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { assignedAt: 'asc' },
+      });
   const rows = [];
   for (const t of teachers) {
     const partner = await ensureInstructorPartner(tx, t.user);

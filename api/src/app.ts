@@ -26,14 +26,16 @@ import { cryptoWebhookRouter } from './modules/payments/crypto-webhook.routes.js
 import { bankTransferRouter } from './modules/payments/bank-transfer.routes.js';
 import { chatRouter } from './modules/chat/chat.routes.js';
 import { instructorRouter } from './modules/instructor/index.js';
+import { publicInstructorsRouter } from './modules/instructor/public.routes.js';
 import { partnerRouter } from './modules/partner/partner.routes.js';
 import { filesRouter } from './modules/files/files.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { bunnyWebhookRouter } from './modules/video/bunny-webhook.routes.js';
 import { config } from './config.js';
+import { instructorSignupRouter } from './modules/instructor/profile.routes.js';
 
 /** Routes whose JSON body carries base64 images (see lib/attachments.ts). */
-export const UPLOAD_ROUTES = /^\/(admin\/uploads|admin\/partners\/[^/]+\/logo|orders\/[^/]+\/slip|me\/threads\/support|courses\/[^/]+\/threads|threads\/[^/]+\/messages)$/;
+export const UPLOAD_ROUTES = /^\/(auth\/register-instructor|instructor\/profile\/documents|instructor\/uploads|admin\/uploads|admin\/partners\/[^/]+\/logo|orders\/[^/]+\/slip|me\/threads\/support|courses\/[^/]+\/threads|threads\/[^/]+\/messages)$/;
 
 export function createApp() {
   const app = express();
@@ -68,6 +70,7 @@ export function createApp() {
 
   app.use(filesRouter);          // /files/public/* (local disk), /files/private/* (signed; local disk or Bunny private zone)
   app.use(bunnyWebhookRouter);   // /bunny/webhook (Bunny Stream: video encoded / failed)
+  app.use(instructorSignupRouter); // POST /auth/register-instructor
   app.use('/auth', authRouter);
   app.use(catalogRouter);        // /courses, /categories, /tags
   app.use(landingRouter);        // /landing
@@ -78,6 +81,7 @@ export function createApp() {
   app.use(notificationsRouter);  // /notifications
   app.use(bankTransferRouter);   // /payments/bank-details, /courses/:id/checkout/bank-transfer, /orders/:id/slip
   app.use(chatRouter);           // /me/threads, /threads/..., /attachments/:id/url
+  app.use(publicInstructorsRouter); // /instructors, /instructors/:id (public profiles)
   app.use(reviewsRouter);        // /courses/:slug/reviews, /me/courses/:courseId/review
   app.use('/instructor', instructorRouter);
   app.use(partnerRouter);          // /partner/* (requireAuth + requirePartner)

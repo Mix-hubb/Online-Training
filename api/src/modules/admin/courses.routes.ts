@@ -12,6 +12,14 @@
 //   PUT    /admin/courses/pins          { ids } new order of the pinned courses (same set)
 // Pins are admin-only, no limit. Leaving PUBLISHED clears the pin.
 //   POST   /admin/courses/:id/intro-upload-init
+// 2026-11-27: instructors own the courses they create. This router is mounted under /admin AND /instructor;
+// every handler checks access (modules/courses/access.ts):
+//   POST   {base}/courses                 INSTRUCTOR only: new DRAFT owned by them (admins no longer create courses)
+//   POST   {base}/courses/:id/status      owner: DRAFT -> IN_REVIEW (send for review), IN_REVIEW -> DRAFT (take back),
+//                                         PUBLISHED -> DRAFT | ARCHIVED, ARCHIVED -> PUBLISHED (approved before) | DRAFT
+//   POST   /admin/courses/:id/approve     ADMIN: IN_REVIEW -> PUBLISHED, owner notified
+//   POST   /admin/courses/:id/reject      ADMIN { reason }: IN_REVIEW -> DRAFT with reviewNote, owner notified
+// Older courses without an owner stay fully admin-managed (status changes as before).
 import { Router } from 'express';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
@@ -25,6 +33,8 @@ import { uniqueCourseSlug } from '../../lib/slug.js';
 import { video } from '../../providers/video/index.js';
 import { courseLearners } from '../learning/learners.service.js';
 import { STRIPE_MIN } from '../payments/checkout-methods.js';
+import { notify } from '../../lib/notify.js';
+import { assertAdmin, assertCourse } from '../courses/access.js';
 
 export const coursesAdminRouter = Router();
 
@@ -66,6 +76,7 @@ async function loadFull(id: string) {
       lessons: { orderBy: { order: 'asc' }, include: { renditions: true } },
       quiz: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
       instructors: { include: { user: { select: { id: true, name: true, email: true } } } },
+      owner: { select: { id: true, name: true, email: true } },
       _count: { select: { enrollments: true, orders: true } },
     },
   });
@@ -76,9 +87,14 @@ async function loadFull(id: string) {
 coursesAdminRouter.get(
   '/courses',
   h(async (req, res) => {
-    const q = query(req, z.object({ q: z.string().optional(), status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(), category: z.string().optional() }).passthrough());
+    const q = query(
+      req,
+      z.object({ q: z.string().optional(), status: z.enum(['DRAFT', 'IN_REVIEW', 'PUBLISHED', 'ARCHIVED']).optional(), category: z.string().optional() }).passthrough(),
+    );
     const p = parsePage(req.query);
+    const me = req.user!;
     const where: Prisma.CourseWhereInput = {
+      ...(me.role === 'ADMIN' ? {} : { OR: [{ ownerId: me.id }, { instructors: { some: { userId: me.id } } }] }),
       ...(q.status ? { status: q.status } : {}),
       ...(q.category ? { categoryId: q.category } : {}),
       ...(q.q ? { title: { contains: q.q, mode: 'insensitive' } } : {}),
@@ -89,7 +105,7 @@ coursesAdminRouter.get(
         orderBy: { updatedAt: 'desc' },
         skip: p.skip,
         take: p.take,
-        include: { category: { select: { name: true } }, _count: { select: { lessons: true, enrollments: true } } },
+        include: { category: { select: { name: true } }, owner: { select: { id: true, name: true } }, _count: { select: { lessons: true, enrollments: true } } },
       }),
       prisma.course.count({ where }),
     ]);
@@ -109,6 +125,8 @@ coursesAdminRouter.get(
           learners: c._count.enrollments,
           updatedAt: c.updatedAt,
           pinOrder: c.pinOrder,
+          owner: c.owner,
+          submittedAt: c.submittedAt,
         })),
         total,
         p,
@@ -120,12 +138,17 @@ coursesAdminRouter.get(
 coursesAdminRouter.post(
   '/courses',
   h(async (req, res) => {
+    if (req.user!.role !== 'INSTRUCTOR') throw new AppError('FORBIDDEN', 403, 'Courses are created by instructors');
     const input = body(req, courseFields);
     checkPrice(input);
     const { tagIds, slug, ...data } = input;
     const course = await prisma.course.create({
       data: {
         ...data,
+        status: 'DRAFT',
+        ownerId: req.user!.id,
+        // The owner is also a member, so everything that checks CourseInstructor (grading, chat, learners) works.
+        instructors: { create: { userId: req.user!.id, assignedBy: req.user!.id } },
         priceMinor: data.isFree ? 0 : data.priceMinor,
         priceThbMinor: data.isFree ? null : (data.priceThbMinor ?? null),
         slug: await uniqueCourseSlug(slug ?? data.title),
@@ -144,11 +167,18 @@ const pinnedList = () =>
     select: { id: true, slug: true, title: true, status: true, thumbnailUrl: true, pinOrder: true },
   });
 
-coursesAdminRouter.get('/courses/pins', h(async (_req, res) => res.json(await pinnedList())));
+coursesAdminRouter.get(
+  '/courses/pins',
+  h(async (req, res) => {
+    assertAdmin(req.user);
+    res.json(await pinnedList());
+  }),
+);
 
 coursesAdminRouter.put(
   '/courses/pins',
   h(async (req, res) => {
+    assertAdmin(req.user);
     const { ids } = body(req, z.object({ ids: z.array(z.string().min(1)).max(500) }));
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_pins'))`;
@@ -165,6 +195,7 @@ coursesAdminRouter.put(
 coursesAdminRouter.post(
   '/courses/:id/pin',
   h(async (req, res) => {
+    assertAdmin(req.user);
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_pins'))`;
       const c = await tx.course.findUnique({ where: { id: req.params.id }, select: { id: true, status: true, pinOrder: true } });
@@ -182,6 +213,7 @@ coursesAdminRouter.post(
 coursesAdminRouter.delete(
   '/courses/:id/pin',
   h(async (req, res) => {
+    assertAdmin(req.user);
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_pins'))`;
       const c = await tx.course.findUnique({ where: { id: req.params.id }, select: { id: true, pinOrder: true } });
@@ -194,14 +226,19 @@ coursesAdminRouter.delete(
   }),
 );
 
-coursesAdminRouter.get('/courses/:id', h(async (req, res) => res.json(await loadFull(req.params.id))));
+coursesAdminRouter.get(
+  '/courses/:id',
+  h(async (req, res) => {
+    await assertCourse(req.user, req.params.id, 'view');
+    res.json(await loadFull(req.params.id));
+  }),
+);
 
 coursesAdminRouter.patch(
   '/courses/:id',
   h(async (req, res) => {
     const input = body(req, courseFields.partial());
-    const before = await prisma.course.findUnique({ where: { id: req.params.id } });
-    if (!before) throw new AppError('NOT_FOUND', 404);
+    const before = await assertCourse(req.user, req.params.id, 'owner');
     checkPrice({ ...before, ...input });
     const { tagIds, slug, ...data } = input;
     const isFree = data.isFree ?? before.isFree;
@@ -230,10 +267,25 @@ coursesAdminRouter.patch(
 coursesAdminRouter.post(
   '/courses/:id/status',
   h(async (req, res) => {
-    const { status } = body(req, z.object({ status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']) }));
+    const { status } = body(req, z.object({ status: z.enum(['DRAFT', 'IN_REVIEW', 'PUBLISHED', 'ARCHIVED']) }));
+    await assertCourse(req.user, req.params.id, 'owner');
     const c = await prisma.course.findUnique({ where: { id: req.params.id }, include: { lessons: true } });
     if (!c) throw new AppError('NOT_FOUND', 404);
-    if (status === 'PUBLISHED') {
+    if (c.ownerId) {
+      // Instructor-owned: going public always passes an admin review (approve / reject below).
+      const allowed: Record<string, string[]> = {
+        DRAFT: ['IN_REVIEW'],
+        IN_REVIEW: ['DRAFT'],
+        PUBLISHED: ['DRAFT', 'ARCHIVED'],
+        ARCHIVED: c.publishedAt ? ['PUBLISHED', 'DRAFT'] : ['DRAFT'],
+      };
+      if (!allowed[c.status]?.includes(status)) {
+        throw new AppError('VALIDATION_FAILED', 400, status === 'PUBLISHED' ? 'Send the course for review; an admin publishes it' : `A ${c.status.toLowerCase()} course cannot become ${status.toLowerCase()}`);
+      }
+    } else if (status === 'IN_REVIEW') {
+      throw new AppError('VALIDATION_FAILED', 400, 'Only instructor-owned courses go through review');
+    }
+    if (status === 'PUBLISHED' || status === 'IN_REVIEW') {
       if (!c.lessons.length) throw new AppError('VALIDATION_FAILED', 400, 'Add at least one lesson before publishing');
       if (!c.summary.trim()) throw new AppError('VALIDATION_FAILED', 400, 'Add a short summary before publishing');
     }
@@ -241,6 +293,7 @@ coursesAdminRouter.post(
       where: { id: c.id },
       data: {
         status,
+        ...(status === 'IN_REVIEW' ? { submittedAt: new Date(), reviewNote: null } : {}),
         ...(status === 'PUBLISHED' && !c.publishedAt ? { publishedAt: new Date() } : {}),
         ...(status !== 'PUBLISHED' ? { pinOrder: null } : {}), // only PUBLISHED courses stay pinned
       },
@@ -253,6 +306,7 @@ coursesAdminRouter.post(
 coursesAdminRouter.delete(
   '/courses/:id',
   h(async (req, res) => {
+    await assertCourse(req.user, req.params.id, 'owner');
     const c = await prisma.course.findUnique({ where: { id: req.params.id }, include: { _count: { select: { orders: true, enrollments: true } } } });
     if (!c) throw new AppError('NOT_FOUND', 404);
     if (c._count.orders > 0 || c._count.enrollments > 0) {
@@ -264,16 +318,59 @@ coursesAdminRouter.delete(
   }),
 );
 
-coursesAdminRouter.get('/courses/:id/learners', h(async (req, res) => res.json(await courseLearners(req.params.id))));
+coursesAdminRouter.get(
+  '/courses/:id/learners',
+  h(async (req, res) => {
+    await assertCourse(req.user, req.params.id, 'view');
+    res.json(await courseLearners(req.params.id));
+  }),
+);
 
 coursesAdminRouter.post(
   '/courses/:id/intro-upload-init',
   h(async (req, res) => {
-    const c = await prisma.course.findUnique({ where: { id: req.params.id } });
-    if (!c) throw new AppError('NOT_FOUND', 404);
+    const c = await assertCourse(req.user, req.params.id, 'content');
     const v = await video.createVideo(`${c.title} - intro`);
     await prisma.course.update({ where: { id: c.id }, data: { introVideoId: v.providerVideoId } });
     await writeAudit(req.user!.id, 'course.intro_upload', 'Course', c.id);
     res.json(v);
+  }),
+);
+
+// ---- Admin review of instructor courses (2026-11-27) ----
+
+async function inReview(id: string) {
+  const c = await prisma.course.findUnique({ where: { id } });
+  if (!c) throw new AppError('NOT_FOUND', 404);
+  if (c.status !== 'IN_REVIEW') throw new AppError('VALIDATION_FAILED', 409, 'This course is not waiting for review');
+  return c;
+}
+
+coursesAdminRouter.post(
+  '/courses/:id/approve',
+  h(async (req, res) => {
+    assertAdmin(req.user);
+    const c = await inReview(req.params.id);
+    await prisma.$transaction(async (tx) => {
+      await tx.course.update({ where: { id: c.id }, data: { status: 'PUBLISHED', publishedAt: c.publishedAt ?? new Date(), reviewNote: null } });
+      if (c.ownerId) await notify(c.ownerId, `Your course "${c.title}" is approved and now public.`, `/courses/${c.slug}`, tx);
+      await writeAudit(req.user!.id, 'course.approve', 'Course', c.id, { title: c.title }, tx);
+    });
+    res.json(await loadFull(c.id));
+  }),
+);
+
+coursesAdminRouter.post(
+  '/courses/:id/reject',
+  h(async (req, res) => {
+    assertAdmin(req.user);
+    const { reason } = body(req, z.object({ reason: z.string().trim().min(1).max(2000) }));
+    const c = await inReview(req.params.id);
+    await prisma.$transaction(async (tx) => {
+      await tx.course.update({ where: { id: c.id }, data: { status: 'DRAFT', reviewNote: reason } });
+      if (c.ownerId) await notify(c.ownerId, `Your course "${c.title}" needs changes before it can be published.`, `/instructor/courses/${c.id}`, tx);
+      await writeAudit(req.user!.id, 'course.reject', 'Course', c.id, { reason }, tx);
+    });
+    res.json(await loadFull(c.id));
   }),
 );

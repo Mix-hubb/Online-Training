@@ -1,4 +1,5 @@
 // Enrollment helpers + "My learning" status.
+import { isHidden } from '../courses/access.js';
 import type { Enrollment } from '@prisma/client';
 import { prisma, type Tx } from '../../db.js';
 import { AppError } from '../../lib/errors.js';
@@ -20,7 +21,7 @@ export async function ensureEnrollment(userId: string, courseId: string, tx: Tx 
 
 export async function enrollFree(userId: string, courseId: string) {
   const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course || course.status === 'DRAFT') throw new AppError('NOT_FOUND', 404);
+  if (!course || isHidden(course.status)) throw new AppError('NOT_FOUND', 404);
   if (course.status !== 'PUBLISHED') throw new AppError('COURSE_UNAVAILABLE', 410);
   if (!course.isFree) throw new AppError('NOT_FREE', 402);
   const existing = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId } } });

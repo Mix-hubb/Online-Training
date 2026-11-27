@@ -15,6 +15,13 @@
 //   GET    /admin/instructors/:id   one instructor: profile, assigned courses (share, co-instructors, learners,
 //          rating, earned per course), earnings totals per currency and the latest revenue entries (2026-11-24)
 //   POST   /admin/instructors/:id/reset-password   FALLBACK only ("Forgot password?" first); temporary password once
+// Sign-up review and revenue share (2026-11-27):
+//   GET    /admin/instructors?approval=PENDING|APPROVED|REJECTED   (default APPROVED; counts per status in `counts`)
+//   POST   /admin/instructors/:id/approve
+//   POST   /admin/instructors/:id/reject  { reason }
+//   PUT    /admin/instructors/:id/share   { sharePercentBp }  share of the sales of every course the instructor OWNS;
+//          applies to orders paid after the change (each entry keeps the percent it was made with)
+// Accounts made here or with make-instructor get an APPROVED profile (they were added by an admin).
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
@@ -28,6 +35,17 @@ import { body, email, query } from '../../lib/validate.js';
 import { writeAudit } from '../../lib/audit.js';
 import { ensureInstructorPartner, MAX_TOTAL_SHARE_BP } from '../revenue/ledger.service.js';
 import type { Tx } from '../../db.js';
+import { notify } from '../../lib/notify.js';
+import { profileView } from '../instructor/profile.service.js';
+
+/** Admin-made instructors skip the review: an approved, empty profile they can fill in later. */
+async function approvedProfile(tx: Tx, userId: string, adminId: string) {
+  await tx.instructorProfile.upsert({
+    where: { userId },
+    create: { userId, status: 'APPROVED', phone: '', headline: '', bio: '', expertise: [], reviewedAt: new Date(), reviewedById: adminId },
+    update: { status: 'APPROVED', reviewedAt: new Date(), reviewedById: adminId, rejectReason: null },
+  });
+}
 
 export const instructorsAdminRouter = Router();
 export const MAX_INSTRUCTORS = 2;
@@ -104,7 +122,10 @@ instructorsAdminRouter.post(
     const u = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!u) throw new AppError('NOT_FOUND', 404);
     if (u.role !== 'USER') throw new AppError('VALIDATION_FAILED', 400, `This user is ${u.role}`);
-    await prisma.user.update({ where: { id: u.id }, data: { role: 'INSTRUCTOR' } });
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: u.id }, data: { role: 'INSTRUCTOR' } });
+      await approvedProfile(tx, u.id, req.user!.id);
+    });
     await writeAudit(req.user!.id, 'user.make_instructor', 'User', u.id, { email: u.email });
     res.json({ ok: true });
   }),
@@ -128,10 +149,20 @@ instructorsAdminRouter.post(
 instructorsAdminRouter.get(
   '/instructors',
   h(async (req, res) => {
-    const q = query(req, z.object({ q: z.string().trim().max(200).optional(), status: z.enum(['ACTIVE', 'BANNED']).optional() }).passthrough());
+    const q = query(
+      req,
+      z
+        .object({
+          q: z.string().trim().max(200).optional(),
+          status: z.enum(['ACTIVE', 'BANNED']).optional(),
+          approval: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('APPROVED'),
+        })
+        .passthrough(),
+    );
     const p = parsePage(req.query);
     const where: Prisma.UserWhereInput = {
       role: 'INSTRUCTOR',
+      instructorProfile: { status: q.approval },
       ...(q.status ? { status: q.status } : {}),
       ...(q.q ? { OR: [{ email: { contains: q.q, mode: 'insensitive' } }, { name: { contains: q.q, mode: 'insensitive' } }] } : {}),
     };
@@ -149,23 +180,32 @@ instructorsAdminRouter.get(
           status: true,
           mustChangePassword: true,
           createdAt: true,
-          teaches: { select: { sharePercentBp: true, course: { select: { id: true, title: true, slug: true, status: true } } }, orderBy: { course: { title: 'asc' } } },
+          teaches: { select: { sharePercentBp: true, course: { select: { id: true, title: true, slug: true, status: true, ownerId: true } } }, orderBy: { course: { title: 'asc' } } },
           partnerLink: { select: { id: true } },
+          instructorProfile: { select: { status: true, headline: true, phone: true, sharePercentBp: true, submittedAt: true, rejectReason: true, _count: { select: { documents: true } } } },
         },
       }),
       prisma.user.count({ where }),
     ]);
+    const counts = await prisma.instructorProfile.groupBy({ by: ['status'], where: { user: { role: 'INSTRUCTOR' } }, _count: { _all: true } });
     const partnerIds = users.map((u) => u.partnerLink?.id).filter((x): x is string => !!x);
     const unpaid = partnerIds.length
       ? await prisma.revenueEntry.groupBy({ by: ['partnerId', 'currency'], where: { status: 'UNPAID', partnerId: { in: partnerIds } }, _sum: { amountMinor: true } })
       : [];
-    const items = users.map(({ partnerLink, teaches, ...u }) => ({
+    const items = users.map(({ partnerLink, teaches, instructorProfile: pr, ...u }) => ({
       ...u,
       partnerId: partnerLink?.id ?? null,
-      courses: teaches.map((t) => ({ ...t.course, sharePercentBp: t.sharePercentBp })),
+      approval: pr?.status ?? null,
+      headline: pr?.headline ?? '',
+      phone: pr?.phone ?? '',
+      sharePercentBp: pr?.sharePercentBp ?? 0,
+      submittedAt: pr?.submittedAt ?? null,
+      rejectReason: pr?.rejectReason ?? null,
+      documents: pr?._count.documents ?? 0,
+      courses: teaches.map(({ course: { ownerId, ...c }, sharePercentBp }) => ({ ...c, sharePercentBp, owner: ownerId === u.id })),
       outstanding: unpaid.filter((x) => x.partnerId === partnerLink?.id).map((x) => ({ currency: x.currency, amountMinor: x._sum.amountMinor ?? 0 })),
     }));
-    res.json(paged(items, total, p));
+    res.json({ ...paged(items, total, p), counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])) });
   }),
 );
 
@@ -186,6 +226,7 @@ instructorsAdminRouter.get(
         mustChangePassword: true,
         createdAt: true,
         partnerLink: { select: { id: true } },
+        instructorProfile: { include: { documents: true } },
         teaches: {
           orderBy: { course: { title: 'asc' } },
           select: {
@@ -201,6 +242,7 @@ instructorsAdminRouter.get(
                 isFree: true,
                 priceMinor: true,
                 priceThbMinor: true,
+                ownerId: true,
                 instructors: { select: { sharePercentBp: true, user: { select: { id: true, name: true } } } },
               },
             },
@@ -244,10 +286,12 @@ instructorsAdminRouter.get(
       mustChangePassword: u.mustChangePassword,
       createdAt: u.createdAt,
       partnerId,
-      courses: u.teaches.map(({ course: { instructors, ...c }, sharePercentBp, assignedAt }) => {
+      profile: u.instructorProfile ? await profileView(u.instructorProfile) : null,
+      courses: u.teaches.map(({ course: { instructors, ownerId, ...c }, sharePercentBp, assignedAt }) => {
         const r = ratings.find((x) => x.courseId === c.id);
         return {
           ...c,
+          owner: ownerId === u.id,
           sharePercentBp,
           assignedAt,
           coInstructors: instructors.filter((i) => i.user.id !== u.id).map((i) => ({ id: i.user.id, name: i.user.name, sharePercentBp: i.sharePercentBp })),
@@ -287,7 +331,10 @@ instructorsAdminRouter.post(
       if (existing.role === 'INSTRUCTOR') throw new AppError('VALIDATION_FAILED', 409, 'This person is already an instructor');
       if (existing.role !== 'USER') throw new AppError('VALIDATION_FAILED', 409, `This email belongs to a ${existing.role.toLowerCase()} account`);
       if (!input.promoteExisting) throw new AppError('ACCOUNT_EXISTS', 409, `${existing.name} already has a learner account with this email`);
-      await prisma.user.update({ where: { id: existing.id }, data: { role: 'INSTRUCTOR' } });
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: existing.id }, data: { role: 'INSTRUCTOR' } });
+        await approvedProfile(tx, existing.id, req.user!.id);
+      });
       await writeAudit(req.user!.id, 'user.make_instructor', 'User', existing.id, { email: existing.email });
       return void res.json({ id: existing.id, email: existing.email, promoted: true, temporaryPassword: null });
     }
@@ -303,6 +350,7 @@ instructorsAdminRouter.post(
           mustChangePassword: true,
         },
       });
+      await approvedProfile(tx, created.id, req.user!.id);
       // Never put the password in the audit log.
       await writeAudit(req.user!.id, 'instructor.account_create', 'User', created.id, { email: created.email, name: created.name }, tx);
       return created;
@@ -323,5 +371,61 @@ instructorsAdminRouter.post(
       await writeAudit(req.user!.id, 'instructor.password_reset', 'User', u.id, { email: u.email }, tx);
     });
     res.json({ email: u.email, temporaryPassword: password });
+  }),
+);
+
+async function profileOf(id: string) {
+  const prof = await prisma.instructorProfile.findUnique({ where: { userId: id }, include: { user: true } });
+  if (!prof || prof.user.role !== 'INSTRUCTOR') throw new AppError('NOT_FOUND', 404);
+  return prof;
+}
+
+instructorsAdminRouter.post(
+  '/instructors/:id/approve',
+  h(async (req, res) => {
+    const prof = await profileOf(req.params.id);
+    if (prof.status === 'APPROVED') return void res.json({ ok: true });
+    await prisma.$transaction(async (tx) => {
+      await tx.instructorProfile.update({
+        where: { userId: prof.userId },
+        data: { status: 'APPROVED', reviewedAt: new Date(), reviewedById: req.user!.id, rejectReason: null },
+      });
+      await ensureInstructorPartner(tx, prof.user); // earnings page works from day one
+      await notify(prof.userId, 'Your instructor account is approved. You can create your first course now.', '/instructor', tx);
+      await writeAudit(req.user!.id, 'instructor.approve', 'User', prof.userId, { email: prof.user.email }, tx);
+    });
+    res.json({ ok: true });
+  }),
+);
+
+instructorsAdminRouter.post(
+  '/instructors/:id/reject',
+  h(async (req, res) => {
+    const { reason } = body(req, z.object({ reason: z.string().trim().min(1).max(1000) }));
+    const prof = await profileOf(req.params.id);
+    if (prof.status === 'APPROVED') throw new AppError('VALIDATION_FAILED', 409, 'This instructor is already approved');
+    await prisma.$transaction(async (tx) => {
+      await tx.instructorProfile.update({
+        where: { userId: prof.userId },
+        data: { status: 'REJECTED', rejectReason: reason, reviewedAt: new Date(), reviewedById: req.user!.id },
+      });
+      await notify(prof.userId, 'Your instructor application needs changes. See the reason and send it again.', '/instructor/profile', tx);
+      await writeAudit(req.user!.id, 'instructor.reject', 'User', prof.userId, { reason }, tx);
+    });
+    res.json({ ok: true });
+  }),
+);
+
+instructorsAdminRouter.put(
+  '/instructors/:id/share',
+  h(async (req, res) => {
+    const { sharePercentBp } = body(req, z.object({ sharePercentBp: share }));
+    const prof = await profileOf(req.params.id);
+    await prisma.$transaction(async (tx) => {
+      await tx.instructorProfile.update({ where: { userId: prof.userId }, data: { sharePercentBp } });
+      if (sharePercentBp > 0) await ensureInstructorPartner(tx, prof.user);
+      await writeAudit(req.user!.id, 'instructor.owner_share', 'User', prof.userId, { from: prof.sharePercentBp, to: sharePercentBp }, tx);
+    });
+    res.json({ sharePercentBp });
   }),
 );

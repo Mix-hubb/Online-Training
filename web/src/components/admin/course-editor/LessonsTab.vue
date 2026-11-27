@@ -15,16 +15,17 @@ import { duration } from '@/utils/format';
 
 const props = defineProps<{ course: AdminCourse }>();
 const emit = defineEmits<{ changed: [] }>();
-const edit = ref<{ id: string | null; title: string; description: string; attachments: string } | null>(null);
+// free: a free preview lesson (2026-11-27): anyone signed in can watch it without buying the course.
+const edit = ref<{ id: string | null; title: string; description: string; attachments: string; free: boolean } | null>(null);
 const del = ref<AdminLesson | null>(null);
 const busy = ref(false);
 const err = ref('');
 
 function openNew() {
-  edit.value = { id: null, title: '', description: '', attachments: '' };
+  edit.value = { id: null, title: '', description: '', attachments: '', free: false };
 }
 function openEdit(l: AdminLesson) {
-  edit.value = { id: l.id, title: l.title, description: l.description ?? '', attachments: l.attachmentUrls.join('\n') };
+  edit.value = { id: l.id, title: l.title, description: l.description ?? '', attachments: l.attachmentUrls.join('\n'), free: l.isFreePreview };
 }
 async function save() {
   if (!edit.value || !edit.value.title.trim()) return;
@@ -32,10 +33,11 @@ async function save() {
   err.value = '';
   try {
     const attachmentUrls = edit.value.attachments.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (edit.value.id) await api.update(edit.value.id, { title: edit.value.title.trim(), description: edit.value.description || null, attachmentUrls });
+    const isFreePreview = edit.value.free;
+    if (edit.value.id) await api.update(edit.value.id, { title: edit.value.title.trim(), description: edit.value.description || null, attachmentUrls, isFreePreview });
     else {
       const l = await api.create(props.course.id, { title: edit.value.title.trim(), description: edit.value.description || null });
-      if (attachmentUrls.length) await api.update(l.id, { attachmentUrls });
+      if (attachmentUrls.length || isFreePreview) await api.update(l.id, { attachmentUrls, isFreePreview });
     }
     edit.value = null;
     emit('changed');
@@ -175,6 +177,7 @@ const h = (x: number) => (x >= 2160 ? '4K' : `${x}p`);
               <span v-for="r in l.renditions" :key="r.height" class="tag">{{ h(r.height) }}{{ r.ready ? '' : ' …' }}</span>
             </template>
             <span v-else>No video yet</span>
+            <span v-if="l.isFreePreview" class="tag">Free preview</span>
             <span v-if="l.attachmentUrls.length">· {{ l.attachmentUrls.length }} {{ l.attachmentUrls.length === 1 ? 'attachment' : 'attachments' }}</span>
           </div>
         </div>
@@ -197,6 +200,14 @@ const h = (x: number) => (x >= 2160 ? '4K' : `${x}p`);
         <v-text-field v-model="edit.title" label="Title" maxlength="150" class="mb-2" />
         <v-textarea v-model="edit.description" label="Description (optional)" rows="3" auto-grow class="mb-2" />
         <v-textarea v-model="edit.attachments" label="Attachment links, one per line (optional)" rows="2" auto-grow />
+        <v-checkbox v-model="edit.free" hide-details density="comfortable" color="primary">
+          <template #label>
+            <span>
+              <span class="d-block">Free preview</span>
+              <span class="d-block text-caption text-muted">Anyone signed in can watch this lesson without buying the course.</span>
+            </span>
+          </template>
+        </v-checkbox>
       </v-card-text>
       <v-card-actions><v-spacer /><v-btn variant="text" @click="edit = null">Cancel</v-btn><v-btn color="primary" variant="flat" :loading="busy" @click="save">Save</v-btn></v-card-actions>
     </v-card>

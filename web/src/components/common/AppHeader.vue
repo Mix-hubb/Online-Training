@@ -2,15 +2,30 @@
 // Header: logo, Courses, My learning, Messages, bell, account menu; logged out: Log in + Sign up.
 // The way to the admin / instructor / partner area is in the account menu only (2026-11-24).
 import { ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import AccountMenu from './AccountMenu.vue';
 import BrandMark from './BrandMark.vue';
 import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '@/stores/auth';
+import { smoothScrollTo } from '@/utils/smoothScroll';
 
 const auth = useAuthStore();
 const { mdAndUp } = useDisplay();
 const drawer = ref(false);
+const route = useRoute();
+const router = useRouter();
+
+// "Instructors" glides down to the cards on the home page, like "Browse courses" does.
+function toInstructors() {
+  drawer.value = false;
+  // From another page, the home page scrolls there itself once its content has loaded.
+  if (route.path !== '/') return void router.push({ path: '/', hash: '#instructors' });
+  const el = document.getElementById('instructors');
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  void smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - 88);
+}
 
 </script>
 
@@ -25,6 +40,7 @@ const drawer = ref(false);
       <template v-if="mdAndUp">
         <nav aria-label="Main" class="d-flex align-center ga-6 main-nav">
           <router-link to="/" exact-active-class="active">Courses</router-link>
+          <a href="/#instructors" @click.prevent="toInstructors">Instructors</a>
           <router-link v-if="auth.user && auth.user.role !== 'PARTNER'" to="/profile" active-class="active">My learning</router-link>
           <router-link v-if="auth.user && auth.user.role !== 'PARTNER'" to="/messages" active-class="active">Messages</router-link>
         </nav>
@@ -45,6 +61,7 @@ const drawer = ref(false);
   <v-navigation-drawer v-if="!mdAndUp" v-model="drawer" temporary color="surface-variant">
     <v-list nav>
       <v-list-item to="/" title="Courses" prepend-icon="mdi-book-open-page-variant-outline" />
+      <v-list-item href="/#instructors" title="Instructors" prepend-icon="mdi-account-tie-outline" @click.prevent="toInstructors" />
       <template v-if="auth.user && auth.user.role !== 'PARTNER'">
         <v-list-item to="/profile" title="My learning" prepend-icon="mdi-school-outline" />
         <v-list-item to="/messages" title="Messages" prepend-icon="mdi-message-outline" />

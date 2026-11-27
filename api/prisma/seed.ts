@@ -207,6 +207,23 @@ async function main() {
   const admin = await user('admin@example.com', 'Admin', 'ADMIN');
   const learner = await user('learner@example.com', 'Somchai Learner', 'USER');
   const instructor = await user('instructor@example.com', 'Dr. Napat Instructor', 'INSTRUCTOR');
+  // 2026-11-27: instructors need an approved profile to use their tools. The demo one is approved, with a 30% share
+  // of the courses they make themselves (older admin-made courses keep the per-course share below).
+  await prisma.instructorProfile.upsert({
+    where: { userId: instructor.id },
+    create: {
+      userId: instructor.id,
+      status: 'APPROVED',
+      phone: '[phone]',
+      headline: 'Mining engineer and safety trainer',
+      bio: 'Teaches mine safety and surveying. [Replace with the real instructor profile.]',
+      expertise: ['Mine safety', 'Surveying'],
+      sharePercentBp: 3000,
+      reviewedAt: new Date(),
+      reviewedById: admin.id,
+    },
+    update: {},
+  });
   const partnerUser = await user('partner@example.com', '[Partner company]', 'PARTNER');
 
   const [safety, geology, ops] = await Promise.all(

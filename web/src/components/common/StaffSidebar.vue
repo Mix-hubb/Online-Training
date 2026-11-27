@@ -27,6 +27,7 @@ const ICONS: Record<string, string> = {
   '/instructor/grading': 'mdi-clipboard-check-outline',
   '/instructor/messages': 'mdi-message-text-outline',
   '/instructor/earnings': 'mdi-cash-multiple',
+  '/instructor/profile': 'mdi-account-card-outline',
   '/partner/revenue-sharing': 'mdi-chart-pie',
   '/partner/payouts': 'mdi-bank-transfer',
   '/account/change-password': 'mdi-lock-outline',

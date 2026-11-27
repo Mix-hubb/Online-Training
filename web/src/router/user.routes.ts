@@ -7,12 +7,16 @@ export const userRoutes: RouteRecordRaw[] = [
   // Auth (login + register are tabs on one page)
   { path: '/login', name: 'login', component: () => import('@/pages/user/auth/AuthPage.vue'), props: { tab: 'login' } },
   { path: '/register', name: 'register', component: () => import('@/pages/user/auth/AuthPage.vue'), props: { tab: 'register' } },
+  { path: '/register/instructor', name: 'instructor-signup', component: () => import('@/pages/user/auth/InstructorSignupPage.vue') },
   { path: '/verify-email', name: 'verify-email', component: () => import('@/pages/user/auth/VerifyEmailPage.vue') },
   { path: '/forgot-password', name: 'forgot-password', component: () => import('@/pages/user/auth/ForgotPasswordPage.vue') },
   { path: '/account/change-password', name: 'change-password', component: () => import('@/pages/user/auth/ChangePasswordPage.vue'), meta: { auth: true } },
   { path: '/reset-password', name: 'reset-password', component: () => import('@/pages/user/auth/ResetPasswordPage.vue') },
 
   // Catalog
+  // The instructor cards live on the home page now.
+  { path: '/instructors', name: 'instructors', redirect: { path: '/', hash: '#instructors' } },
+  { path: '/instructors/:id', name: 'instructor-public', component: () => import('@/pages/public/InstructorPublicPage.vue') },
   { path: '/courses/:slug', name: 'course', component: () => import('@/pages/user/course/CoursePage.vue') },
 
   // Stripe success_url is /profile/orders?session_id=... (Figma shows "Confirming payment" on Orders).

@@ -4,8 +4,8 @@
 //   PATCH   {base}/questions/:id
 //   DELETE  {base}/questions/:id
 //   PUT     {base}/quiz/:quizId/questions/order  { ids }
-// Access: ADMIN, or an INSTRUCTOR assigned to the quiz's course (CourseInstructor); otherwise NOT_ASSIGNED.
-// Instructors can edit only the test: course details and lessons stay admin-only.
+// Access (2026-11-27, modules/courses/access.ts): the course owner and co-instructors edit; ADMIN can read every
+// test (course review) and edit only older courses without an owner.
 // MCQ: at least 2 options and exactly one correct.
 import { Router } from 'express';
 import type { User } from '@prisma/client';
@@ -15,15 +15,12 @@ import { h } from '../../lib/async.js';
 import { AppError } from '../../lib/errors.js';
 import { body } from '../../lib/validate.js';
 import { writeAudit } from '../../lib/audit.js';
-import { isAssigned } from '../../middleware/roles.js';
+import { assertCourse, type CourseLevel } from '../courses/access.js';
 
 export const quizAdminRouter = Router();
 
-/** ADMIN passes; an instructor must be assigned to the course. Anyone else: FORBIDDEN. */
-async function assertQuizAccess(user: User | undefined, courseId: string) {
-  if (user?.role === 'ADMIN') return;
-  if (user?.role !== 'INSTRUCTOR') throw new AppError('FORBIDDEN', 403);
-  if (!(await isAssigned(user.id, courseId))) throw new AppError('NOT_ASSIGNED', 403);
+async function assertQuizAccess(user: User | undefined, courseId: string, level: CourseLevel = 'test') {
+  await assertCourse(user, courseId, level);
 }
 
 async function courseOfQuiz(quizId: string) {
@@ -64,7 +61,7 @@ const quizView = (courseId: string) =>
 quizAdminRouter.get(
   '/courses/:id/quiz',
   h(async (req, res) => {
-    await assertQuizAccess(req.user, req.params.id);
+    await assertQuizAccess(req.user, req.params.id, 'view');
     res.json(await quizView(req.params.id));
   }),
 );

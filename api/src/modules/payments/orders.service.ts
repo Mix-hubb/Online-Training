@@ -7,10 +7,11 @@ import { markOrderPaid } from '../../lib/order-paid.js';
 import { cryptoProvider } from '../../providers/payments/index.js';
 import { resolveMethod, STRIPE_MIN, type PayCurrency, type PayMethod } from './checkout-methods.js';
 import { stripe } from './stripe.js';
+import { isHidden } from '../courses/access.js';
 
 export async function loadPurchasable(courseId: string, userId: string): Promise<Course> {
   const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course || course.status === 'DRAFT') throw new AppError('NOT_FOUND', 404);
+  if (!course || isHidden(course.status)) throw new AppError('NOT_FOUND', 404);
   if (course.status !== 'PUBLISHED') throw new AppError('COURSE_UNAVAILABLE', 410);
   if (course.isFree) throw new AppError('VALIDATION_FAILED', 400, 'This course is free, enroll instead');
   const owned = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId } } });

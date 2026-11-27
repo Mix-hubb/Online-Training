@@ -6,8 +6,9 @@ import QuestionEditor from './QuestionEditor.vue';
 import { quizApi, type QuestionInput, type QuizBase, type QuizSettings, type QuizView } from '@/api/admin/quiz';
 import type { AdminQuestion } from '@/api/admin/courses';
 import { errorMessage } from '@/api/client';
+import { scope } from '@/api/admin/scope';
 
-const props = withDefaults(defineProps<{ course: { id: string; quiz: QuizView }; base?: QuizBase }>(), { base: '/admin' });
+const props = withDefaults(defineProps<{ course: { id: string; quiz: QuizView }; base?: QuizBase }>(), { base: () => scope() });
 const api = quizApi(props.base);
 const emit = defineEmits<{ changed: [] }>();
 const s = ref<QuizSettings>({ passPercent: 70, timeLimitMin: null, maxAttempts: 3 });

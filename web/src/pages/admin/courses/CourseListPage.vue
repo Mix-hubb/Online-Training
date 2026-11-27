@@ -1,8 +1,11 @@
 <script setup lang="ts">
 // Admin course list (mockup AdminCourses): search, status + category filters, table with Edit / Preview / Delete.
+// 2026-11-27: instructors make courses; admins review them ("Waiting for review", approve in the preview) and
+// edit only older courses without an owner. There is no "New course" here any more.
 // Pins (admin-only, 2026-11-22): pin toggle per row (PUBLISHED only) and a drag-to-reorder list of pinned courses.
 // Learners see pinned courses first in the catalog, with no label.
 import { onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import StatusPill from '@/components/common/StatusPill.vue';
@@ -13,7 +16,8 @@ import type { Paged } from '@/types';
 import { date, priceLabel } from '@/utils/format';
 import CourseCover from '@/components/course/CourseCover.vue';
 
-const q = ref({ q: '', status: '', category: '', page: 1 });
+const route = useRoute();
+const q = ref({ q: '', status: typeof route.query.status === 'string' ? route.query.status : '', category: '', page: 1 });
 const data = ref<Paged<api.AdminCourseRow> | null>(null);
 const categories = ref<taxonomy.TaxonRow[]>([]);
 const toDelete = ref<api.AdminCourseRow | null>(null);
@@ -75,8 +79,9 @@ watch(
   },
 );
 watch(() => q.value.page, load);
-const tone = (s: string) => (s === 'PUBLISHED' ? 'success' : s === 'DRAFT' ? 'warning' : 'neutral');
-const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+const tone = (s: string) => (s === 'PUBLISHED' ? 'success' : s === 'DRAFT' || s === 'IN_REVIEW' ? 'warning' : 'neutral');
+const LABEL: Record<string, string> = { DRAFT: 'Draft', IN_REVIEW: 'Waiting for review', PUBLISHED: 'Published', ARCHIVED: 'Archived' };
+const label = (s: string) => LABEL[s] ?? s;
 function askDelete(c: api.AdminCourseRow) {
   err.value = '';
   toDelete.value = c;
@@ -100,8 +105,8 @@ async function doDelete() {
 
 <template>
   <div class="admin-page d-flex flex-column ga-6">
-    <AdminPageHeader title="Courses" subtitle="Create, edit and publish courses.">
-      <v-btn color="primary" prepend-icon="mdi-plus" to="/admin/courses/new">New course</v-btn>
+    <AdminPageHeader title="Courses" subtitle="Instructors make the courses. Review and approve them, pin them in the catalog, or archive them.">
+      <v-btn :variant="q.status === 'IN_REVIEW' ? 'flat' : 'outlined'" color="primary" @click="q.status = q.status === 'IN_REVIEW' ? '' : 'IN_REVIEW'">Waiting for review</v-btn>
     </AdminPageHeader>
 
     <div class="filters">
@@ -110,6 +115,7 @@ async function doDelete() {
         <label for="as" class="sr-only">Status</label>
         <select id="as" v-model="q.status" class="ot-select">
           <option value="">All statuses</option>
+          <option value="IN_REVIEW">Waiting for review</option>
           <option value="DRAFT">Draft</option>
           <option value="PUBLISHED">Published</option>
           <option value="ARCHIVED">Archived</option>
@@ -156,7 +162,7 @@ async function doDelete() {
     </section>
 
     <v-skeleton-loader v-if="!data" type="table" color="surface" />
-    <div v-else-if="!data.items.length" class="panel pa-10 text-center text-body-2 text-muted">No courses match. Create a new one.</div>
+    <div v-else-if="!data.items.length" class="panel pa-10 text-center text-body-2 text-muted">{{ q.status === 'IN_REVIEW' ? 'No courses are waiting for review.' : 'No courses match.' }}</div>
     <div v-else class="table-scroll">
       <table class="data-table" style="min-width: 900px">
         <caption class="sr-only">All courses</caption>
@@ -192,7 +198,9 @@ async function doDelete() {
                 <span class="cthumb"><CourseCover :image-url="c.thumbnailUrl" :title="c.title" size="sm" /></span>
                 <div>
                   <div class="font-weight-bold">{{ c.title }}</div>
-                  <div class="text-caption text-muted mt-1">{{ c.category ?? 'No category' }} · {{ c.lessons }} {{ c.lessons === 1 ? 'lesson' : 'lessons' }}</div>
+                  <div class="text-caption text-muted mt-1">
+                    {{ c.owner ? `By ${c.owner.name}` : 'Admin-managed' }} · {{ c.category ?? 'No category' }} · {{ c.lessons }} {{ c.lessons === 1 ? 'lesson' : 'lessons' }}
+                  </div>
                 </div>
               </div>
             </td>
@@ -201,9 +209,14 @@ async function doDelete() {
             <td>{{ c.learners }}</td>
             <td class="text-no-wrap text-muted">{{ date(c.updatedAt) }}</td>
             <td class="text-right text-no-wrap">
+              <template v-if="c.owner">
+                <router-link :to="`/admin/courses/${c.id}/preview`" class="row-btn">{{ c.status === 'IN_REVIEW' ? 'Review' : 'View' }}</router-link>
+              </template>
+              <template v-else>
               <router-link :to="`/admin/courses/${c.id}`" class="row-btn">Edit</router-link>
               <router-link :to="`/admin/courses/${c.id}/preview`" class="row-link">Preview</router-link>
               <button type="button" class="row-link danger" :disabled="c.learners > 0" :title="c.learners > 0 ? 'Courses with learners can only be archived' : undefined" @click="askDelete(c)">Delete</button>
+              </template>
             </td>
           </tr>
         </tbody>

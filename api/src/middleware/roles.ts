@@ -10,6 +10,18 @@ export function requireInstructor(req: Request, _res: Response, next: NextFuncti
   next();
 }
 
+/** INSTRUCTOR with an APPROVED profile (2026-11-27), or ADMIN. Use after requireInstructor. */
+export async function requireApprovedInstructor(req: Request, _res: Response, next: NextFunction) {
+  try {
+    if (req.user?.role === 'ADMIN') return next();
+    const p = await prisma.instructorProfile.findUnique({ where: { userId: req.user!.id }, select: { status: true } });
+    if (p?.status !== 'APPROVED') throw new AppError('INSTRUCTOR_NOT_APPROVED', 403, 'Your instructor account is waiting for approval');
+    next();
+  } catch (e) {
+    next(e);
+  }
+}
+
 /** Role PARTNER, or INSTRUCTOR with a linked Partner. Loads req.partner (own record only). */
 export async function requirePartner(req: Request, _res: Response, next: NextFunction) {
   try {

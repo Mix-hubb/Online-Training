@@ -40,7 +40,7 @@ const MIN = 60 * 1000;
 const RULES: { name: string; path: RegExp; limit: number; windowMs: number }[] = [
   { name: 'chat', path: /^\/(me\/threads\/support|courses\/[^/]+\/threads|threads\/[^/]+\/messages)$/, limit: 20, windowMs: MIN },
   { name: 'checkout', path: /^\/(courses\/[^/]+\/checkout(\/bank-transfer)?|orders\/[^/]+\/slip)$/, limit: 10, windowMs: 10 * MIN },
-  { name: 'upload', path: /^\/admin\/(uploads|partners\/[^/]+\/logo)$/, limit: 60, windowMs: 10 * MIN },
+  { name: 'upload', path: /^\/(admin\/(uploads|partners\/[^/]+\/logo)|instructor\/(uploads|profile\/documents)|auth\/register-instructor)$/, limit: 60, windowMs: 10 * MIN },
 ];
 
 /** Who is calling, without a DB hit: the session's user id when the cookie is valid, else the IP. */

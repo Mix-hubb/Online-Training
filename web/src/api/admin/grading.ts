@@ -1,4 +1,5 @@
 // API: admin grading + shared learner/grading types.
+import { scope } from './scope';
 import { get, post } from '../client';
 
 export interface GradingRow {
@@ -42,4 +43,4 @@ export const queue = () => get<GradingRow[]>('/admin/grading');
 export const attempt = (id: string) => get<GradingAttempt>(`/admin/grading/${id}`);
 export const grade = (id: string, grades: { questionId: string; points: number; comment?: string }[]) =>
   post<{ score: number; maxScore: number; passed: boolean }>(`/admin/grading/${id}`, { grades });
-export const learners = (courseId: string) => get<LearnerRow[]>(`/admin/courses/${courseId}/learners`);
+export const learners = (courseId: string) => get<LearnerRow[]>(`${scope()}/courses/${courseId}/learners`);

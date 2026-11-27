@@ -45,7 +45,10 @@ function limitIp(name: string, ip: string | undefined, limit: number, windowMs: 
 const mailAllowed = (to: string) => hit(`mail:${to}`, 3, MIN15);
 
 export async function toMe(user: User) {
-  const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true, name: true } });
+  const [partner, profile] = await Promise.all([
+    prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true, name: true } }),
+    user.role === 'INSTRUCTOR' ? prisma.instructorProfile.findUnique({ where: { userId: user.id }, select: { status: true } }) : null,
+  ]);
   return {
     id: user.id,
     email: user.email,
@@ -56,6 +59,8 @@ export async function toMe(user: User) {
     mustChangePassword: user.mustChangePassword,
     hasPassword: Boolean(user.passwordHash),
     partner,
+    // 2026-11-27: PENDING / REJECTED instructors only see their application page.
+    instructorStatus: profile?.status ?? null,
   };
 }
 
@@ -82,7 +87,7 @@ async function useToken(token: string, type: 'VERIFY' | 'RESET') {
 }
 
 /** New verify link; older unused verify links stop working. Returns false when the mail could not be sent. */
-async function sendVerify(user: User) {
+export async function sendVerify(user: User) {
   await prisma.authToken.updateMany({ where: { userId: user.id, type: 'VERIFY', usedAt: null }, data: { usedAt: new Date() } });
   const token = await issueToken(user.id, 'VERIFY');
   return sendMailSafe(verifyEmailMail(user.email, `${config.WEB_URL}/verify-email?token=${token}`));

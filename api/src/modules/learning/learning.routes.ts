@@ -3,7 +3,8 @@
 //   GET  /me/courses                (My learning + status per course)
 //   GET  /me/continue               (last lesson per enrollment for Resume buttons)
 //   GET  /courses/:slug/learn       (lessons + progress for current cycle + lock state + quiz lock)
-//   GET  /lessons/:id/play          (signed short-lived URL; owner, admin or assigned instructor; LOCKED if previous not done)
+//   GET  /lessons/:id/play          (signed short-lived URL; owner, admin or assigned instructor; LOCKED if previous not done;
+//                                    a free preview lesson of a PUBLISHED course: any signed-in user)
 //   PUT  /lessons/:id/progress      { position, watchedDelta }
 import { Router } from 'express';
 import { prisma } from '../../db.js';
@@ -12,6 +13,7 @@ import { AppError } from '../../lib/errors.js';
 import { body } from '../../lib/validate.js';
 import { requireAuth, requireLearner } from '../../middleware/auth.js';
 import { isAssigned } from '../../middleware/roles.js';
+import { isHidden } from '../courses/access.js';
 import { video, allowedRenditions } from '../../providers/video/index.js';
 import { enrollFree, myCourses } from './enrollment.service.js';
 import { lessonStates, quizUnlocked } from './lock.service.js';
@@ -40,7 +42,7 @@ learningRouter.get(
   h(async (req, res) => {
     const all = await myCourses(req.user!.id);
     const rows = all
-      .filter((c) => c.status !== 'COMPLETED' && c.course.status !== 'DRAFT')
+      .filter((c) => c.status !== 'COMPLETED' && !isHidden(c.course.status))
       .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime())
       .slice(0, 8);
     res.json(rows);
@@ -69,8 +71,10 @@ learningRouter.get(
     ]);
     if (!course) throw new AppError('NOT_FOUND', 404);
     const preview = !enrollment && (await staffCanPreview(user.id, user.role, course.id));
-    if (!enrollment && !preview) throw new AppError('NOT_ENROLLED', 403);
-    if (enrollment && course.status === 'DRAFT' && user.role !== 'ADMIN') throw new AppError('NOT_FOUND', 404);
+    // Not enrolled: a PUBLISHED course with free preview lessons opens with only those lessons unlocked.
+    const freeOnly = !enrollment && !preview && course.status === 'PUBLISHED' && course.lessons.some((l) => l.isFreePreview);
+    if (!enrollment && !preview && !freeOnly) throw new AppError('NOT_ENROLLED', 403);
+    if (enrollment && isHidden(course.status) && user.role !== 'ADMIN') throw new AppError('NOT_FOUND', 404);
 
     const ids = course.lessons.map((l) => l.id);
     const [progress, attemptsUsed] = await Promise.all([
@@ -78,11 +82,19 @@ learningRouter.get(
       enrollment && course.quiz ? prisma.quizAttempt.count({ where: { enrollmentId: enrollment.id, cycle: enrollment.cycle } }) : 0,
     ]);
     // The same set completedLessonIds() returns (completed rows of the current cycle), from the rows already loaded.
-    const done = enrollment ? new Set(progress.filter((p) => p.completed).map((p) => p.lessonId)) : new Set(ids);
-    const states = lessonStates(ids, done);
+    const done = enrollment
+      ? new Set(progress.filter((p) => p.completed).map((p) => p.lessonId))
+      : freeOnly
+        ? new Set<string>()
+        : new Set(ids);
+    const states = lessonStates(ids, done).map((st, i) => {
+      const free = course.lessons[i].isFreePreview;
+      return { ...st, unlocked: freeOnly ? free : st.unlocked || free };
+    });
 
     res.json({
       preview,
+      freePreview: freeOnly,
       course: { id: course.id, slug: course.slug, title: course.title, status: course.status },
       enrollment: enrollment
         ? { id: enrollment.id, status: enrollment.status, cycle: enrollment.cycle, lastLessonId: enrollment.lastLessonId }
@@ -96,6 +108,7 @@ learningRouter.get(
           description: l.description,
           durationSec: l.durationSec,
           videoStatus: l.videoStatus,
+          isFreePreview: l.isFreePreview,
           attachmentUrls: states[i].unlocked ? l.attachmentUrls : [],
           unlocked: states[i].unlocked,
           completed: states[i].completed,
@@ -110,7 +123,7 @@ learningRouter.get(
             timeLimitMin: course.quiz.timeLimitMin,
             maxAttempts: course.quiz.maxAttempts,
             attemptsUsed,
-            unlocked: preview || quizUnlocked(ids, done),
+            unlocked: !freeOnly && (preview || quizUnlocked(ids, done)),
           }
         : null,
     });
@@ -131,9 +144,11 @@ learningRouter.get(
     const [, progress] = await Promise.all([
       enrollment
         ? assertLessonUnlocked(enrollment, lesson)
-        : staffCanPreview(user.id, user.role, lesson.courseId).then((ok) => {
-            if (!ok) throw new AppError('NOT_ENROLLED', 403);
-          }),
+        : lesson.isFreePreview && lesson.course.status === 'PUBLISHED'
+          ? Promise.resolve()
+          : staffCanPreview(user.id, user.role, lesson.courseId).then((ok) => {
+              if (!ok) throw new AppError('NOT_ENROLLED', 403);
+            }),
       enrollment
         ? prisma.lessonProgress.findUnique({
             where: { enrollmentId_lessonId_cycle: { enrollmentId: enrollment.id, lessonId: lesson.id, cycle: enrollment.cycle } },

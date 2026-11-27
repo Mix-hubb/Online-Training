@@ -1,6 +1,6 @@
 // API: course instructors (max 2) and each one's share of this course's sales.
-import { del, get, patch, post } from '../client';
-import type { Paged } from '@/types';
+import { del, get, patch, post, put } from '../client';
+import type { InstructorProfile, InstructorStatus, Paged } from '@/types';
 
 export interface CourseInstructorRow {
   courseId: string;
@@ -28,8 +28,16 @@ export interface InstructorRow {
   mustChangePassword: boolean;
   createdAt: string;
   partnerId: string | null;
-  courses: { id: string; title: string; slug: string; status: string; sharePercentBp: number }[];
+  courses: { id: string; title: string; slug: string; status: string; sharePercentBp: number; owner: { id: string; name: string } | null }[];
   outstanding: { currency: string; amountMinor: number }[];
+  approval: InstructorStatus;
+  headline: string | null;
+  phone: string | null;
+  /** The admin-set revenue share for all of this instructor's own courses, basis points. */
+  sharePercentBp: number;
+  submittedAt: string | null;
+  rejectReason: string | null;
+  documents: number;
 }
 export interface CreatedInstructor {
   id: string;
@@ -38,7 +46,11 @@ export interface CreatedInstructor {
   /** Shown once. null when an existing learner was promoted (they keep their password). */
   temporaryPassword: string | null;
 }
-export const listInstructors = (q: { q?: string; status?: string; page?: number }) => get<Paged<InstructorRow>>('/admin/instructors', q);
+export const listInstructors = (q: { q?: string; status?: string; approval?: InstructorStatus; page?: number }) =>
+  get<Paged<InstructorRow> & { counts: Record<InstructorStatus, number> }>('/admin/instructors', q);
+export const approve = (id: string) => post(`/admin/instructors/${id}/approve`);
+export const reject = (id: string, reason: string) => post(`/admin/instructors/${id}/reject`, { reason });
+export const setRevenueShare = (id: string, sharePercentBp: number) => put(`/admin/instructors/${id}/share`, { sharePercentBp });
 export const createInstructor = (b: { name: string; email: string; promoteExisting?: boolean }) => post<CreatedInstructor>('/admin/instructors', b);
 export const resetInstructorPassword = (id: string) => post<{ email: string; temporaryPassword: string }>(`/admin/instructors/${id}/reset-password`);
 
@@ -47,7 +59,8 @@ export interface InstructorCourse {
   id: string;
   title: string;
   slug: string;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED';
+  owner: { id: string; name: string } | null;
   thumbnailUrl: string | null;
   isFree: boolean;
   priceMinor: number;
@@ -70,6 +83,7 @@ export interface InstructorDetail {
   createdAt: string;
   partnerId: string | null;
   courses: InstructorCourse[];
+  profile: InstructorProfile | null;
   earnings: { currency: string; earnedMinor: number; paidMinor: number; unpaidMinor: number }[];
   recent: {
     id: string;

@@ -11,6 +11,13 @@ export interface InstructorCourse {
   thumbnailUrl: string | null;
   learners: number;
   lessons: number;
+  owner: { id: string; name: string } | null;
+  /** true: I made this course (I edit details, price, team and send it for review). */
+  isOwner: boolean;
+  /** Admin's note when the course was sent back from review. */
+  reviewNote: string | null;
+  submittedAt: string | null;
+  updatedAt: string;
 }
 export const dashboard = () =>
   get<{ courses: InstructorCourse[]; learners: number; gradingWaiting: number; unreadThreads: number }>('/instructor/dashboard');

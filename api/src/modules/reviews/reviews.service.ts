@@ -1,5 +1,6 @@
 // Course reviews (spec 17). A learner may review a course once its enrollment is COMPLETED;
 // one review per learner per course, editable later. Admin-hidden reviews stay hidden on edit.
+import { isHidden } from '../courses/access.js';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../db.js';
 import { AppError } from '../../lib/errors.js';
@@ -34,7 +35,7 @@ export async function ratingSummary(course: string | { slug: string }) {
 
 async function visibleCourse(slug: string) {
   const c = await prisma.course.findUnique({ where: { slug }, select: { id: true, status: true } });
-  if (!c || c.status === 'DRAFT') throw new AppError('NOT_FOUND', 404);
+  if (!c || isHidden(c.status)) throw new AppError('NOT_FOUND', 404);
   return c;
 }
 

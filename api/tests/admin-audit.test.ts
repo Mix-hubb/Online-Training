@@ -13,18 +13,22 @@ describe('admin audit log', () => {
     expect(log.actorId).toBe(admin.id);
   });
 
-  it('create, lesson, quiz, status: every mutation is logged', async () => {
+  it('create, lesson, quiz, status, approve: every mutation is logged', async () => {
+    // 2026-11-27: instructors make courses, admins approve them.
     const admin = await makeUser('ADMIN');
-    const created = await as(admin.id).post('/admin/courses').send({ title: 'Audit course', summary: 'S' });
+    const ins = await makeUser('INSTRUCTOR');
+    const created = await as(ins.id).post('/instructor/courses').send({ title: 'Audit course', summary: 'S' });
     expect(created.status).toBe(201);
     const id = created.body.id;
-    await as(admin.id).post(`/admin/courses/${id}/lessons`).send({ title: 'L1' });
-    await as(admin.id).put(`/admin/courses/${id}/quiz`).send({ passPercent: 70, timeLimitMin: null, maxAttempts: 3 });
-    await as(admin.id).post(`/admin/courses/${id}/status`).send({ status: 'PUBLISHED' });
-    const actions = (await prisma.auditLog.findMany({ where: { actorId: admin.id } })).map((a) => a.action);
+    expect((await as(ins.id).post(`/instructor/courses/${id}/lessons`).send({ title: 'L1' })).status).toBe(201);
+    await as(ins.id).put(`/instructor/courses/${id}/quiz`).send({ passPercent: 70, timeLimitMin: null, maxAttempts: 3 });
+    expect((await as(ins.id).post(`/instructor/courses/${id}/status`).send({ status: 'IN_REVIEW' })).status).toBe(200);
+    expect((await as(admin.id).post(`/admin/courses/${id}/approve`)).status).toBe(200);
+    const actions = (await prisma.auditLog.findMany({ where: { actorId: ins.id } })).map((a) => a.action);
     expect(actions).toEqual(expect.arrayContaining(['course.create', 'lesson.create', 'quiz.update', 'course.status']));
+    expect((await prisma.auditLog.findMany({ where: { actorId: admin.id } })).map((a) => a.action)).toContain('course.approve');
     const list = await as(admin.id).get('/admin/audit');
-    expect(list.body.total).toBeGreaterThanOrEqual(4);
+    expect(list.body.total).toBeGreaterThanOrEqual(5);
   });
 
   it('non-admins cannot open admin routes', async () => {

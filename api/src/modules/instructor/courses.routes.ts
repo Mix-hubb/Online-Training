@@ -1,4 +1,4 @@
-// Assigned courses (read-only).
+// My courses: owned (created by me) and co-taught (2026-11-27; editing lives in the shared admin routers).
 //   GET /instructor/dashboard
 //   GET /instructor/courses
 //   GET /instructor/courses/:courseId/learners  (progress, test status, cycle)
@@ -19,7 +19,7 @@ async function myCourses(userId: string) {
   const ids = await myCourseIds(userId);
   const courses = await prisma.course.findMany({
     where: { id: { in: ids } },
-    include: { _count: { select: { enrollments: true, lessons: true } } },
+    include: { _count: { select: { enrollments: true, lessons: true } }, owner: { select: { id: true, name: true } } },
     orderBy: { title: 'asc' },
   });
   return courses.map((c) => ({
@@ -30,6 +30,11 @@ async function myCourses(userId: string) {
     thumbnailUrl: c.thumbnailUrl,
     learners: c._count.enrollments,
     lessons: c._count.lessons,
+    owner: c.owner,
+    isOwner: c.ownerId === userId,
+    reviewNote: c.reviewNote,
+    submittedAt: c.submittedAt,
+    updatedAt: c.updatedAt,
   }));
 }
 

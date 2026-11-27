@@ -1,4 +1,5 @@
 // API: admin landing CMS + image upload.
+import { scope } from './scope';
 import { del, get, patch, post, put } from '../client';
 import type { FileUpload } from '@/types';
 
@@ -24,4 +25,5 @@ export const reorderBanners = (ids: string[]) => put<Banner[]>('/admin/banners/o
 export const sections = () => get<Section[]>('/admin/landing');
 export const saveSections = (sections: Section[]) => put<Section[]>('/admin/landing', { sections });
 export const uploadImage = (file: FileUpload, kind: 'cover' | 'banner' | 'logo' | 'signature' | 'other') =>
-  post<{ url: string; width?: number; height?: number }>('/admin/uploads', { file, kind });
+  // Instructors upload course covers and lesson images to /instructor/uploads (cover | other only).
+  post<{ url: string; width?: number; height?: number }>(`${kind === 'cover' || kind === 'other' ? scope() : '/admin'}/uploads`, { file, kind });

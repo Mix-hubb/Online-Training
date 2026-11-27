@@ -6,7 +6,7 @@ import StarRating from './StarRating.vue';
 import StarInput from './StarInput.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import * as reviewsApi from '@/api/reviews';
-import { errorMessage } from '@/api/client';
+import { ApiError, errorMessage } from '@/api/client';
 import { date, initials, plural } from '@/utils/format';
 
 const props = defineProps<{ slug: string; courseId: string; signedIn: boolean; enrollmentStatus: 'IN_PROGRESS' | 'COMPLETED' | null; preview?: boolean }>();
@@ -33,7 +33,14 @@ const bars = computed(() => {
 });
 
 async function loadList() {
-  data.value = await reviewsApi.list(props.slug);
+  try {
+    data.value = await reviewsApi.list(props.slug);
+  } catch (e) {
+    // Preview of a draft or a course waiting for review: it is not public yet, so it has no reviews.
+    if (!(props.preview && e instanceof ApiError && e.status === 404)) throw e;
+    const distribution = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+    data.value = { summary: { average: null, count: 0, distribution }, items: [], total: 0, page: 1, pageSize: 5, pages: 1 };
+  }
 }
 async function loadMine() {
   if (!props.signedIn || props.preview || !props.enrollmentStatus) return;

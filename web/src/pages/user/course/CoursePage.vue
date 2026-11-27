@@ -171,7 +171,7 @@ async function playIntro() {
             <h2 id="content-h">Course content</h2>
             <span class="text-body-2 text-muted">{{ plural(course.lessonCount, 'video lesson') }}{{ course.quiz ? ' and a final test' : '' }}</span>
           </div>
-          <LessonOutline :lessons="course.lessons" :enrolled="enrolled" :has-test="!!course.quiz" />
+          <LessonOutline :lessons="course.lessons" :enrolled="enrolled" :has-test="!!course.quiz" :slug="course.slug" :no-links="preview" />
         </section>
 
         <section v-if="course.quiz" class="panel pad" aria-labelledby="test-h">
@@ -201,7 +201,11 @@ async function playIntro() {
           <span v-if="!course.isFree" class="text-body-2 text-muted">one-time, yours for good</span>
         </div>
         <span v-if="!course.isFree && course.priceMinor > 0 && course.priceThbMinor" class="text-body-2 text-muted mt-n2">Thai baht price: {{ money(course.priceThbMinor, 'thb') }}</span>
-        <span v-if="course.instructors.length" class="text-body-2 text-muted">Taught by {{ course.instructors.map((i) => i.name).join(' and ') }}</span>
+        <span v-if="course.owner?.public" class="text-body-2 text-muted">
+          Taught by <router-link :to="`/instructors/${course.owner.id}`" class="teacher">{{ course.owner.name }}</router-link>
+          <template v-for="i in course.instructors.filter((x) => x.id !== course?.owner?.id)" :key="i.id"> and {{ i.name }}</template>
+        </span>
+        <span v-else-if="course.instructors.length" class="text-body-2 text-muted">Taught by {{ course.instructors.map((i) => i.name).join(' and ') }}</span>
         <v-alert v-if="err" type="error" variant="tonal" density="compact">{{ err }}</v-alert>
 
         <template v-if="isPartner">
@@ -386,6 +390,10 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
+}
+.teacher {
+  color: var(--ot-accent-strong);
+  font-weight: 600;
 }
 .buy {
   flex: 1 1 400px;
