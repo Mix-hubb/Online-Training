@@ -370,6 +370,7 @@ model CertificateTemplate {
   signerTitle  String  @default("")
   logoUrl      String?
   signatureUrl String?
+  stampUrl     String? // round stamp/seal over the issuer name (2026-11-27 layout)
   primaryColor String  @default("#1a73e8")
 }
 

@@ -26,10 +26,12 @@ certificateTemplateAdminRouter.put(
       z.object({
         heading: z.string().trim().min(1).max(80),
         issuerName: z.string().max(120),
-        signerName: z.string().max(120),
-        signerTitle: z.string().max(120),
+        // Not on the 2026-11-27 layout (stamp + issuer name instead); kept for older clients.
+        signerName: z.string().max(120).optional(),
+        signerTitle: z.string().max(120).optional(),
         logoUrl: z.string().url().nullable(),
-        signatureUrl: z.string().url().nullable(),
+        signatureUrl: z.string().url().nullable().optional(),
+        stampUrl: z.string().url().nullable().optional(),
         primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       }),
     );
@@ -44,8 +46,8 @@ certificateTemplateAdminRouter.get(
   h(async (req, res) => {
     const pdf = await renderCertificatePdf({
       number: 'OT-0000-000000',
-      learnerName: req.user!.name,
-      courseTitle: 'Sample course title',
+      learnerName: req.user!.name || 'Sample Learner',
+      courseTitle: 'Sample Course Title',
       issuedAt: new Date(),
       verifyUrl: `${config.WEB_URL}/certificates/OT-0000-000000`,
       template: await getTemplate(),

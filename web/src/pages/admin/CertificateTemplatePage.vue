@@ -41,7 +41,7 @@ async function save() {
 </script>
 <template>
   <div class="admin-page d-flex flex-column ga-6">
-    <AdminPageHeader title="Certificate template" subtitle="One template for every course. The layout is fixed; you can change the text, logo, signature and colour.">
+    <AdminPageHeader title="Certificate template" subtitle="One template for every course. The layout is fixed; you can change the heading, issuer name, logo, stamp and accent colour.">
       <v-btn v-if="t" color="primary" :loading="busy" @click="save">Save template</v-btn>
     </AdminPageHeader>
     <div v-if="err" class="callout danger" role="alert">{{ err }}</div>
@@ -49,11 +49,9 @@ async function save() {
     <div v-else class="cert-split">
       <section class="panel pa-6 d-flex flex-column ga-1 settings" aria-label="Template settings">
         <v-text-field v-model="t.heading" label="Heading" />
-        <v-text-field v-model="t.issuerName" label="Issuer name" />
-        <v-text-field v-model="t.signerName" label="Signer name" placeholder="Name of the person who signs" />
-        <v-text-field v-model="t.signerTitle" label="Signer title" placeholder="Job title" />
-        <ImageUpload v-model="t.logoUrl" kind="logo" label="Logo" :aspect="3" class="mb-4" />
-        <ImageUpload v-model="t.signatureUrl" kind="signature" label="Signature image" :aspect="3" class="mb-4" />
+        <v-text-field v-model="t.issuerName" label="Issuer name" hint="Shown in 'organized by …' and under the stamp." persistent-hint class="mb-2" />
+        <ImageUpload v-model="t.logoUrl" kind="logo" label="Logo (top centre)" :aspect="1" class="mb-4" />
+        <ImageUpload v-model="t.stampUrl" kind="signature" label="Stamp (PNG with a clear background)" :aspect="1" class="mb-4" />
         <div class="d-flex align-center ga-3">
           <label for="c-col" class="text-body-2 font-weight-medium">Accent colour</label>
           <input id="c-col" v-model="t.primaryColor" type="color" class="swatch" />

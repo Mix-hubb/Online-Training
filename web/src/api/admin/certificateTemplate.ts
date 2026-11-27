@@ -4,10 +4,9 @@ import { API_BASE, ApiError, get, put } from '../client';
 export interface CertificateTemplate {
   heading: string;
   issuerName: string;
-  signerName: string;
-  signerTitle: string;
   logoUrl: string | null;
-  signatureUrl: string | null;
+  /** Round stamp/seal printed over the issuer name (2026-11-27 layout). */
+  stampUrl: string | null;
   primaryColor: string;
 }
 export const getTemplate = () => get<CertificateTemplate>('/admin/certificate-template');
